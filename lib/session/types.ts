@@ -84,7 +84,7 @@ export interface SessionEventPayloads {
   game_ended: Record<string, never>;
 }
 
-export interface SessionEvent<T extends SessionEventType = SessionEventType> {
+interface SessionEventBase<T extends SessionEventType> {
   id: string;
   sessionId: string;
   type: T;
@@ -92,6 +92,13 @@ export interface SessionEvent<T extends SessionEventType = SessionEventType> {
   payload: SessionEventPayloads[T];
   sequence: number;
 }
+
+// Indexing a mapped type by its own key distributes over the union,
+// so this yields a real discriminated union (narrowable on `type`)
+// instead of a single shape with `type`/`payload` as unrelated unions.
+export type SessionEvent<T extends SessionEventType = SessionEventType> = {
+  [K in T]: SessionEventBase<K>;
+}[T];
 
 export interface SessionState {
   session: Session;

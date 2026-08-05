@@ -4,7 +4,6 @@ import { playerRepository } from "@/lib/db/repositories/player-repository";
 import { buildSessionState } from "@/lib/session/services/session-engine";
 import type {
   Session,
-  SessionEvent,
   SessionState,
   WizardFormData,
 } from "@/lib/session/types";
