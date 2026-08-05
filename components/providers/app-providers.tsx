@@ -1,0 +1,43 @@
+"use client";
+
+import { useEffect } from "react";
+
+import { initializeDatabase } from "@/lib/db/database";
+import { useAppStore } from "@/stores/app-store";
+import { useSettingsStore } from "@/stores/settings-store";
+
+import { ServiceWorkerRegister } from "./service-worker-register";
+
+interface AppProvidersProps {
+  children: React.ReactNode;
+}
+
+export function AppProviders({ children }: AppProvidersProps) {
+  const setDbReady = useAppStore((state) => state.setDbReady);
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      await initializeDatabase();
+      if (!cancelled) {
+        setDbReady(true);
+        await loadSettings();
+      }
+    }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setDbReady, loadSettings]);
+
+  return (
+    <>
+      <ServiceWorkerRegister />
+      {children}
+    </>
+  );
+}
