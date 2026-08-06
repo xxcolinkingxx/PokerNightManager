@@ -44,6 +44,13 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  // Without this, iOS doesn't shrink the layout viewport for the on-screen
+  // keyboard -- fixed-position sheets (dvh-sized, anchored to the bottom)
+  // stay put and the keyboard just overlays on top of whatever input was
+  // focused, so it visually disappears until you tap away and back.
+  // "resizes-content" makes the viewport (and dvh units, and fixed
+  // positioning) actually account for the keyboard.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
