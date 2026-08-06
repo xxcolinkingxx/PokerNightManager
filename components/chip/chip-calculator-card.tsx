@@ -38,24 +38,50 @@ export function ChipCalculatorCard({ chips }: ChipCalculatorCardProps) {
     setState({ amount: numericAmount, counts: suggest(sorted, numericAmount) });
   }
 
-  // Auto-balance: nudging one chip's count re-suggests every other
-  // denomination so the total keeps matching the amount, instead of just
-  // reporting how far off it drifted.
+  // Auto-balance: nudging one chip's count claws the difference back from
+  // (or hands it to) OTHER denominations so the total keeps matching the
+  // amount -- but only ever strictly-bigger chips absorb an increase, and
+  // only ever strictly-smaller chips absorb a decrease. That keeps a small
+  // chip's count from ever being sacrificed to balance another small chip
+  // (they used to fight each other), and it means compensation always
+  // shrinks the big chips / grows the small ones, never the reverse.
   function adjust(value: number, delta: number) {
     setState((prev) => {
       const touchedChip = sorted.find((chip) => chip.value === value);
       if (!touchedChip) return prev;
 
-      const newCount = Math.max(0, (prev.counts[value] ?? 0) + delta);
-      const touchedTotal = touchedChip.value * newCount;
-      const remainderTarget = Math.max(0, numericAmount - touchedTotal);
-      const otherChips = sorted.filter((chip) => chip.value !== value);
-      const { counts: rebalanced } = calculateChipDistribution(remainderTarget, otherChips);
+      const oldCount = prev.counts[value] ?? 0;
+      const newCount = Math.max(0, oldCount + delta);
+      if (newCount === oldCount) return prev;
 
-      const counts: Record<number, number> = { [value]: newCount };
-      for (const { chip, count } of rebalanced) {
-        counts[chip.value] = count;
+      const counts: Record<number, number> = { ...prev.counts, [value]: newCount };
+      let imbalance = (newCount - oldCount) * touchedChip.value;
+
+      if (imbalance > 0) {
+        // sorted is largest-first, so this claws back from the biggest
+        // strictly-larger denomination downward.
+        for (const chip of sorted) {
+          if (chip.value <= touchedChip.value || imbalance <= 0) continue;
+          const have = counts[chip.value] ?? 0;
+          const remove = Math.min(have, Math.floor(imbalance / chip.value));
+          if (remove > 0) {
+            counts[chip.value] = have - remove;
+            imbalance -= remove * chip.value;
+          }
+        }
+      } else if (imbalance < 0) {
+        // Spread the freed value across the strictly-smaller chips with
+        // the same suggestion logic used elsewhere (favors the smallest
+        // couple of denominations, but doesn't dump the whole amount into
+        // just one of them), added on top of whatever those chips already
+        // had rather than replacing them.
+        const smallerChips = sorted.filter((chip) => chip.value < touchedChip.value);
+        const { counts: added } = calculateChipDistribution(-imbalance, smallerChips);
+        for (const { chip, count } of added) {
+          counts[chip.value] = (counts[chip.value] ?? 0) + count;
+        }
       }
+
       return { ...prev, counts };
     });
   }
