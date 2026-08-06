@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { EditPlayerSheet } from "@/components/player/edit-player-sheet";
+import { HeadToHeadCard } from "@/components/player/head-to-head-card";
 import { PlayerAvatar } from "@/components/player/player-avatar";
 import { PlayerContactCard } from "@/components/player/player-contact-card";
 import { PlayerHistoryList } from "@/components/player/player-history-list";
@@ -152,6 +153,12 @@ export default function PlayerProfilePage() {
             </CardContent>
           </Card>
         )}
+
+        <HeadToHeadCard
+          currentPlayerId={player.id}
+          currentPlayerName={player.nickname || player.name}
+          otherPlayers={players.filter((p) => p.id !== player.id)}
+        />
 
         <PlayerContactCard player={player} />
 
