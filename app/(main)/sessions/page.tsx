@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { NewSessionWizard } from "@/components/session/new-session-wizard";
 import { AnimatedPage } from "@/components/shared/animated-page";
+import { StaggerItem, StaggerList } from "@/components/shared/stagger-list";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -69,32 +70,33 @@ export default function SessionsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-3">
+          <StaggerList>
             {sessions.map((session) => (
-              <button
-                key={session.id}
-                type="button"
-                onClick={() => router.push(`/sessions/${session.id}`)}
-                className="w-full text-left"
-              >
-                <Card>
-                  <CardContent className="flex items-center justify-between gap-3 p-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold text-foreground">
-                        {session.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {session.host} · {session.location}
-                      </span>
-                    </div>
-                    <Badge variant={session.status === "active" ? "default" : "secondary"}>
-                      {STATUS_LABEL[session.status]}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </button>
+              <StaggerItem key={session.id}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/sessions/${session.id}`)}
+                  className="w-full text-left"
+                >
+                  <Card>
+                    <CardContent className="flex items-center justify-between gap-3 p-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-foreground">
+                          {session.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {session.host} · {session.location}
+                        </span>
+                      </div>
+                      <Badge variant={session.status === "active" ? "default" : "secondary"}>
+                        {STATUS_LABEL[session.status]}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                </button>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         )}
 
         <div className="grid grid-cols-2 gap-3">

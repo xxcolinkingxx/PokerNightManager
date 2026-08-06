@@ -159,8 +159,8 @@ export default function SettleUpPage() {
                   </CardContent>
                 </Card>
               ) : (
-                plan.transactions.map((tx, index) => (
-                  <Card key={index}>
+                plan.transactions.map((tx) => (
+                  <Card key={`${tx.fromPlayerId}-${tx.toPlayerId}`}>
                     <CardContent className="flex flex-col items-center gap-3 p-4">
                       <div className="flex w-full items-center gap-3">
                         <div className="flex flex-1 items-center gap-2 overflow-hidden">

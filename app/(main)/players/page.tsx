@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AddPlayerSheet } from "@/components/player/add-player-sheet";
 import { PlayerAvatar } from "@/components/player/player-avatar";
 import { AnimatedPage } from "@/components/shared/animated-page";
+import { StaggerItem, StaggerList } from "@/components/shared/stagger-list";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -103,9 +104,9 @@ export default function PlayersPage() {
             No players match &ldquo;{query}&rdquo;.
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <StaggerList>
             {filteredPlayers.map((player) => (
-              <div
+              <StaggerItem
                 key={player.id}
                 role="button"
                 tabIndex={0}
@@ -142,9 +143,9 @@ export default function PlayersPage() {
                     </button>
                   </CardContent>
                 </Card>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         )}
       </AnimatedPage>
 
