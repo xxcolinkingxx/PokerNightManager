@@ -10,6 +10,12 @@
   --success: #2ecc71;
   --danger: #e74c3c;
   --nav-height: 4.5rem;
+  /* Kept in sync with the actual on-screen keyboard height via
+     visualViewport (see use-keyboard-viewport-fix.ts) -- interactive-widget
+     viewport-meta support alone isn't reliable in standalone/home-screen
+     PWA mode, so this reserves real bottom space to scroll a focused
+     field into instead of depending on the browser to do it. */
+  --keyboard-inset: 0px;
 }
 
 @theme inline {
@@ -42,6 +48,7 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   overscroll-behavior: none;
+  padding-bottom: var(--keyboard-inset);
 }
 
 @layer utilities {

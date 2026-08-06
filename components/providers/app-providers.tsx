@@ -3,7 +3,7 @@
 import { MotionConfig } from "framer-motion";
 import { useEffect } from "react";
 
-import { useKeyboardFocusScroll } from "@/hooks/use-keyboard-focus-scroll";
+import { useKeyboardViewportFix } from "@/hooks/use-keyboard-viewport-fix";
 import { initializeDatabase } from "@/lib/db/database";
 import { useAppStore } from "@/stores/app-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -18,7 +18,7 @@ export function AppProviders({ children }: AppProvidersProps) {
   const setDbReady = useAppStore((state) => state.setDbReady);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
 
-  useKeyboardFocusScroll();
+  useKeyboardViewportFix();
 
   useEffect(() => {
     let cancelled = false;
