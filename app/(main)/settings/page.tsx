@@ -278,7 +278,18 @@ export default function SettingsPage() {
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
-                <span>Poker Night Manager v1.0.0</span>
+                <span>
+                  Poker Night Manager v1.0.0
+                  <a
+                    href="https://www.tiktok.com/@panzersoldat?_r=1&_t=ZT-98fCpHkFEaL"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="115"
+                    className="ml-0.5 align-super text-[9px] text-muted-foreground/40 no-underline"
+                  >
+                    115
+                  </a>
+                </span>
               </div>
               <Separator />
               <p className="text-xs text-muted-foreground">
