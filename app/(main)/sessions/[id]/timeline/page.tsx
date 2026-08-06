@@ -36,6 +36,7 @@ import {
 import { buildTimeline } from "@/lib/session/services/timeline-engine";
 import type { SessionEventType } from "@/lib/session/types";
 import { cn } from "@/lib/utils";
+import { useBlindStructureStore } from "@/stores/blind-structure-store";
 import { useSessionStore } from "@/stores/session-store";
 
 const EVENT_ICON: Record<SessionEventType, LucideIcon> = {
@@ -64,6 +65,9 @@ export default function TimelinePage() {
   const liveState = useSessionStore((s) => s.liveState);
   const loadLiveState = useSessionStore((s) => s.loadLiveState);
 
+  const blindStructures = useBlindStructureStore((s) => s.blindStructures);
+  const loadBlindStructures = useBlindStructureStore((s) => s.loadBlindStructures);
+
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -76,6 +80,10 @@ export default function TimelinePage() {
       cancelled = true;
     };
   }, [sessionId, loadLiveState]);
+
+  useEffect(() => {
+    void loadBlindStructures();
+  }, [loadBlindStructures]);
 
   if (notFound) {
     return (
@@ -130,7 +138,7 @@ export default function TimelinePage() {
   const snapshotTime = new Date(snapshotEvent.timestamp);
   const elapsedMs = computeElapsedMs(snapshotEvents, snapshotTime);
   const pot = computePot(snapshotEvents);
-  const blindLevel = getCurrentBlindLevel(snapshotEvents, session.blindStructureId);
+  const blindLevel = getCurrentBlindLevel(snapshotEvents, session.blindStructureId, blindStructures);
   const playerSummaries = getPlayerSummaries(snapshotEvents);
 
   return (

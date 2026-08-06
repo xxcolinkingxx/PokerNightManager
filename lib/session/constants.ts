@@ -58,7 +58,22 @@ export const DEFAULT_BLIND_STRUCTURE: BlindStructure = {
   ],
 };
 
-export const BLIND_STRUCTURES: BlindStructure[] = [DEFAULT_BLIND_STRUCTURE];
+// A gentler, sub-dollar progression for lower-stakes home games (e.g. a
+// 0.25/0.50 start) -- seeded alongside the standard structure so there's
+// a sensible option out of the box, on top of whatever custom structures
+// get created in Settings.
+export const MICRO_STAKES_BLIND_STRUCTURE: BlindStructure = {
+  id: "micro-stakes",
+  name: "Micro Stakes",
+  isDefault: false,
+  levels: [
+    { level: 1, smallBlind: 0.25, bigBlind: 0.5, ante: 0, durationMinutes: 20 },
+    { level: 2, smallBlind: 0.5, bigBlind: 1, ante: 0, durationMinutes: 20 },
+    { level: 3, smallBlind: 1, bigBlind: 2, ante: 0, durationMinutes: 20 },
+    { level: 4, smallBlind: 2, bigBlind: 4, ante: 0, durationMinutes: 20 },
+    { level: 5, smallBlind: 3, bigBlind: 6, ante: 0, durationMinutes: 20 },
+  ],
+};
 
 export const WIZARD_STEPS = [
   { id: "details" as const, label: "Details", number: 1 },

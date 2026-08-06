@@ -1,6 +1,7 @@
 import { db } from "@/lib/db/database";
 import type { AppSettings } from "@/lib/db/types";
 import type {
+  BlindStructure,
   ChipSet,
   Player,
   Session,
@@ -9,7 +10,7 @@ import type {
 } from "@/lib/session/types";
 
 const BACKUP_APP_ID = "PokerNightManager";
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 
 // Player.avatar is a Blob, which isn't JSON-serializable -- swap it for a
 // data URL on the way out and back for a round trip through plain JSON.
@@ -27,6 +28,9 @@ export interface BackupFile {
     chipSets: ChipSet[];
     // Absent in backups made before session templates existed (version 1).
     sessionTemplates?: SessionTemplate[];
+    // Absent in backups made before custom blind structures existed
+    // (version 1-2).
+    blindStructures?: BlindStructure[];
   };
 }
 
@@ -45,7 +49,7 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
 }
 
 export async function exportBackup(): Promise<Blob> {
-  const [settings, players, sessions, sessionEvents, chipSets, sessionTemplates] =
+  const [settings, players, sessions, sessionEvents, chipSets, sessionTemplates, blindStructures] =
     await Promise.all([
       db.settings.toArray(),
       db.players.toArray(),
@@ -53,6 +57,7 @@ export async function exportBackup(): Promise<Blob> {
       db.sessionEvents.toArray(),
       db.chipSets.toArray(),
       db.sessionTemplates.toArray(),
+      db.blindStructures.toArray(),
     ]);
 
   const serializedPlayers: SerializedPlayer[] = await Promise.all(
@@ -73,6 +78,7 @@ export async function exportBackup(): Promise<Blob> {
       sessionEvents,
       chipSets,
       sessionTemplates,
+      blindStructures,
     },
   };
 
@@ -123,10 +129,19 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
     })),
   );
   const sessionTemplates = backup.data.sessionTemplates ?? [];
+  const blindStructures = backup.data.blindStructures ?? [];
 
   await db.transaction(
     "rw",
-    [db.settings, db.players, db.sessions, db.sessionEvents, db.chipSets, db.sessionTemplates],
+    [
+      db.settings,
+      db.players,
+      db.sessions,
+      db.sessionEvents,
+      db.chipSets,
+      db.sessionTemplates,
+      db.blindStructures,
+    ],
     async () => {
       await Promise.all([
         db.settings.clear(),
@@ -135,6 +150,7 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
         db.sessionEvents.clear(),
         db.chipSets.clear(),
         db.sessionTemplates.clear(),
+        db.blindStructures.clear(),
       ]);
       await Promise.all([
         db.settings.bulkAdd(backup.data.settings),
@@ -143,6 +159,7 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
         db.sessionEvents.bulkAdd(backup.data.sessionEvents),
         db.chipSets.bulkAdd(backup.data.chipSets),
         db.sessionTemplates.bulkAdd(sessionTemplates),
+        db.blindStructures.bulkAdd(blindStructures),
       ]);
     },
   );

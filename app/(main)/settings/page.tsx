@@ -11,6 +11,7 @@ import {
   Coins,
   Download,
   MapPin,
+  Timer,
   Trash2,
   TriangleAlert,
   Upload,
@@ -229,6 +230,23 @@ export default function SettingsPage() {
               <div className="flex flex-1 flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground">Session Templates</span>
                 <span className="text-xs text-muted-foreground">Saved setups for quick start</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/settings/blinds">
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <Timer className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Blind Structures</span>
+                <span className="text-xs text-muted-foreground">
+                  Custom stakes and escalation schedules
+                </span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardContent>
