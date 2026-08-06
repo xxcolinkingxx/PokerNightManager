@@ -99,6 +99,14 @@ interface SessionStoreState {
   ) => Promise<void>;
   toggleBreak: (sessionId: string) => Promise<void>;
   increaseBlind: (sessionId: string) => Promise<void>;
+  addRebuy: (sessionId: string, playerId: string, amount: number) => Promise<void>;
+  cashOutPlayer: (sessionId: string, playerId: string, amount: number) => Promise<void>;
+  setDealer: (sessionId: string, playerId: string) => Promise<void>;
+  addPlayerToSession: (
+    sessionId: string,
+    playerId: string,
+    buyInAmount: number,
+  ) => Promise<void>;
   endSession: (sessionId: string) => Promise<void>;
 }
 
@@ -136,6 +144,26 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
 
   increaseBlind: async (sessionId) => {
     const liveState = await sessionService.increaseBlind(sessionId);
+    set({ liveState });
+  },
+
+  addRebuy: async (sessionId, playerId, amount) => {
+    const liveState = await sessionService.addRebuy(sessionId, playerId, amount);
+    set({ liveState });
+  },
+
+  cashOutPlayer: async (sessionId, playerId, amount) => {
+    const liveState = await sessionService.cashOutPlayer(sessionId, playerId, amount);
+    set({ liveState });
+  },
+
+  setDealer: async (sessionId, playerId) => {
+    const liveState = await sessionService.setDealer(sessionId, playerId);
+    set({ liveState });
+  },
+
+  addPlayerToSession: async (sessionId, playerId, buyInAmount) => {
+    const liveState = await sessionService.addPlayerToSession(sessionId, playerId, buyInAmount);
     set({ liveState });
   },
 

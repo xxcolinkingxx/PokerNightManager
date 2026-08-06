@@ -139,12 +139,15 @@ export interface PlayerSessionSummary {
   playerId: string;
   playerName: string;
   total: number;
+  seat: number;
+  isCashedOut: boolean;
 }
 
 export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary[] {
   const order: string[] = [];
   const names = new Map<string, string>();
   const totals = new Map<string, number>();
+  const cashedOut = new Set<string>();
 
   for (const event of events) {
     if (event.type === "player_joined") {
@@ -158,12 +161,27 @@ export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary
     } else if (event.type === "cash_out") {
       const { playerId, amount } = event.payload;
       totals.set(playerId, (totals.get(playerId) ?? 0) - amount);
+      cashedOut.add(playerId);
     }
   }
 
-  return order.map((playerId) => ({
+  return order.map((playerId, index) => ({
     playerId,
     playerName: names.get(playerId) ?? "Unknown",
     total: totals.get(playerId) ?? 0,
+    // Seats are a pure display computation (join order), not stored state --
+    // deliberately, so this can be removed later without a data migration.
+    seat: index + 1,
+    isCashedOut: cashedOut.has(playerId),
   }));
+}
+
+export function getCurrentDealer(events: SessionEvent[]): string | null {
+  let dealerId: string | null = null;
+  for (const event of events) {
+    if (event.type === "dealer_changed") {
+      dealerId = event.payload.playerId;
+    }
+  }
+  return dealerId;
 }

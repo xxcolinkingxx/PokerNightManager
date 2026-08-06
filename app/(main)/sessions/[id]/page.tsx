@@ -1,10 +1,13 @@
 "use client";
 
-import { ArrowLeft, Coins, PauseCircle, PlayCircle, TrendingUp, Users } from "lucide-react";
+import { ArrowLeft, Coins, PauseCircle, PlayCircle, TrendingUp, UserPlus, Users } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AddTablePlayerSheet } from "@/components/session/add-table-player-sheet";
 import { CompletedSessionSummary } from "@/components/session/completed-session-summary";
+import { PlayerQuickActionsSheet } from "@/components/session/player-quick-actions-sheet";
+import { PokerTable } from "@/components/session/poker-table";
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { GlassCard } from "@/components/shared/glass-card";
 import { PageContainer } from "@/components/layout/page-container";
@@ -22,7 +25,12 @@ import {
 } from "@/components/ui/sheet";
 import { useSessionTimer } from "@/hooks/use-session-timer";
 import { BLIND_STRUCTURES } from "@/lib/session/constants";
-import { formatCurrency, getPlayerSummaries } from "@/lib/session/services/session-engine";
+import {
+  formatCurrency,
+  getCurrentDealer,
+  getPlayerSummaries,
+} from "@/lib/session/services/session-engine";
+import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
 
 export default function LiveSessionPage() {
@@ -37,10 +45,15 @@ export default function LiveSessionPage() {
   const increaseBlind = useSessionStore((s) => s.increaseBlind);
   const endSession = useSessionStore((s) => s.endSession);
 
+  const playerRecords = usePlayerStore((s) => s.players);
+  const loadPlayerRecords = usePlayerStore((s) => s.loadPlayers);
+
   const [potInput, setPotInput] = useState("");
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [addPlayerOpen, setAddPlayerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +64,10 @@ export default function LiveSessionPage() {
       cancelled = true;
     };
   }, [sessionId, loadLiveState]);
+
+  useEffect(() => {
+    void loadPlayerRecords();
+  }, [loadPlayerRecords]);
 
   const timerDisplay = useSessionTimer(liveState);
 
@@ -97,6 +114,12 @@ export default function LiveSessionPage() {
   const blindLevel = structure?.levels.find((l) => l.level === currentBlindLevel);
   const nextBlindLevel = structure?.levels.find((l) => l.level === currentBlindLevel + 1);
   const players = getPlayerSummaries(events);
+  const dealerPlayerId = getCurrentDealer(events);
+  const cashedOutPlayers = players.filter((p) => p.isCashedOut);
+
+  const selectedSummary = players.find((p) => p.playerId === selectedPlayerId) ?? null;
+  const selectedPlayerRecord =
+    playerRecords.find((p) => p.id === selectedPlayerId) ?? null;
 
   async function handleAddToPot() {
     const amount = Number(potInput);
@@ -230,24 +253,37 @@ export default function LiveSessionPage() {
         </Card>
 
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-gold" aria-hidden="true" />
-            <span className="text-sm font-semibold text-foreground">Players</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-gold" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">Table</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setAddPlayerOpen(true)}>
+              <UserPlus className="h-4 w-4" />
+              Add Player
+            </Button>
           </div>
-          <div className="flex flex-col gap-2">
-            {players.map((player) => (
-              <Card key={player.playerId}>
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <span className="text-sm font-medium text-foreground">
-                    {player.playerName}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {formatCurrency(player.total)}
-                  </span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+          <PokerTable
+            players={players}
+            dealerPlayerId={dealerPlayerId}
+            playerRecords={playerRecords}
+            onSelectSeat={setSelectedPlayerId}
+          />
+
+          {cashedOutPlayers.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {cashedOutPlayers.map((player) => (
+                <button
+                  type="button"
+                  key={player.playerId}
+                  onClick={() => setSelectedPlayerId(player.playerId)}
+                >
+                  <Badge variant="secondary">{player.playerName} · Cashed Out</Badge>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <Button variant="destructive" onClick={() => setConfirmEndOpen(true)}>
@@ -274,6 +310,26 @@ export default function LiveSessionPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {selectedSummary && selectedPlayerRecord && (
+        <PlayerQuickActionsSheet
+          open={selectedPlayerId !== null}
+          onOpenChange={(open) => !open && setSelectedPlayerId(null)}
+          sessionId={sessionId}
+          player={selectedPlayerRecord}
+          summary={selectedSummary}
+          isDealer={selectedPlayerId === dealerPlayerId}
+          events={events}
+        />
+      )}
+
+      <AddTablePlayerSheet
+        open={addPlayerOpen}
+        onOpenChange={setAddPlayerOpen}
+        sessionId={sessionId}
+        defaultBuyIn={session.buyIn}
+        excludePlayerIds={players.map((p) => p.playerId)}
+      />
     </PageContainer>
   );
 }

@@ -106,6 +106,54 @@ export class SessionService {
     return this.getSessionState(sessionId);
   }
 
+  async addRebuy(sessionId: string, playerId: string, amount: number): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "rebuy", { playerId, amount });
+    return this.getSessionState(sessionId);
+  }
+
+  async cashOutPlayer(
+    sessionId: string,
+    playerId: string,
+    amount: number,
+  ): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "cash_out", { playerId, amount });
+    return this.getSessionState(sessionId);
+  }
+
+  async setDealer(sessionId: string, playerId: string): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "dealer_changed", { playerId });
+    return this.getSessionState(sessionId);
+  }
+
+  async addPlayerToSession(
+    sessionId: string,
+    playerId: string,
+    buyInAmount: number,
+  ): Promise<SessionState> {
+    const session = await sessionRepository.getById(sessionId);
+    if (!session) throw new Error("Session not found");
+
+    const player = await playerRepository.getById(playerId);
+    if (!player) throw new Error("Player not found");
+
+    if (!session.playerIds.includes(playerId)) {
+      await sessionRepository.update(sessionId, {
+        playerIds: [...session.playerIds, playerId],
+      });
+    }
+
+    await sessionEventRepository.append(sessionId, "player_joined", {
+      playerId: player.id,
+      playerName: player.nickname || player.name,
+    });
+    await sessionEventRepository.append(sessionId, "buy_in", {
+      playerId: player.id,
+      amount: buyInAmount,
+    });
+
+    return this.getSessionState(sessionId);
+  }
+
   async endSession(sessionId: string): Promise<Session> {
     const now = new Date().toISOString();
     await sessionEventRepository.append(sessionId, "game_ended", {});
