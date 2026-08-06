@@ -113,6 +113,7 @@ interface SessionStoreState {
     amount: number,
     method: PaymentMethod,
   ) => Promise<void>;
+  eliminatePlayer: (sessionId: string, playerId: string) => Promise<void>;
   setDealer: (sessionId: string, playerId: string) => Promise<void>;
   addPlayerToSession: (
     sessionId: string,
@@ -174,6 +175,11 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
 
   cashOutPlayer: async (sessionId, playerId, amount, method) => {
     const liveState = await sessionService.cashOutPlayer(sessionId, playerId, amount, method);
+    set({ liveState });
+  },
+
+  eliminatePlayer: async (sessionId, playerId) => {
+    const liveState = await sessionService.eliminatePlayer(sessionId, playerId);
     set({ liveState });
   },
 

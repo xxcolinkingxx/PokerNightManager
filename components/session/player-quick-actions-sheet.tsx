@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, DollarSign, History, StickyNote } from "lucide-react";
+import { Crown, DollarSign, History, Skull, StickyNote } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { PlayerAvatar } from "@/components/player/player-avatar";
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PAYMENT_METHOD_LABEL } from "@/lib/session/constants";
 import {
   formatCurrency,
+  ordinal,
   type PlayerSessionSummary,
 } from "@/lib/session/services/session-engine";
 import {
@@ -58,6 +59,7 @@ interface PlayerQuickActionsSheetProps {
   summary: PlayerSessionSummary;
   isDealer: boolean;
   events: SessionEvent[];
+  isTournament: boolean;
 }
 
 export function PlayerQuickActionsSheet({
@@ -68,9 +70,11 @@ export function PlayerQuickActionsSheet({
   summary,
   isDealer,
   events,
+  isTournament,
 }: PlayerQuickActionsSheetProps) {
   const addRebuy = useSessionStore((s) => s.addRebuy);
   const cashOutPlayer = useSessionStore((s) => s.cashOutPlayer);
+  const eliminatePlayer = useSessionStore((s) => s.eliminatePlayer);
   const setDealer = useSessionStore((s) => s.setDealer);
   const updatePlayer = usePlayerStore((s) => s.updatePlayer);
 
@@ -113,6 +117,13 @@ export function PlayerQuickActionsSheet({
     onOpenChange(false);
   }
 
+  async function handleEliminate() {
+    setIsBusy(true);
+    await eliminatePlayer(sessionId, player.id);
+    setIsBusy(false);
+    onOpenChange(false);
+  }
+
   async function handleSetDealer() {
     setIsBusy(true);
     await setDealer(sessionId, player.id);
@@ -145,11 +156,16 @@ export function PlayerQuickActionsSheet({
                 Cashed Out
               </Badge>
             )}
+            {summary.isEliminated && (
+              <Badge variant="secondary" className="ml-auto">
+                Eliminated · {ordinal(summary.finishPosition ?? 0)}
+              </Badge>
+            )}
           </div>
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 pb-6">
-          {!summary.isCashedOut && (
+          {!summary.isCashedOut && !summary.isEliminated && (
             <>
               <div className="flex flex-col gap-2">
                 <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -178,34 +194,56 @@ export function PlayerQuickActionsSheet({
 
               <Separator />
 
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-foreground">Cash Out</span>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="Amount"
-                    value={cashOutAmount}
-                    onChange={(e) => setCashOutAmount(e.target.value)}
-                    aria-label="Cash out amount"
-                  />
+              {isTournament ? (
+                <div className="flex flex-col gap-2">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Skull className="h-4 w-4 text-danger" aria-hidden="true" />
+                    Eliminate
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    Busts {player.nickname || player.name} out of the tournament. Their finishing
+                    place is set automatically.
+                  </p>
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => void handleCashOut()}
+                    onClick={() => void handleEliminate()}
                     disabled={isBusy}
                   >
-                    Cash Out
+                    <Skull className="h-4 w-4" />
+                    Eliminate
                   </Button>
                 </div>
-                <PaymentMethodPicker value={cashOutMethod} onChange={setCashOutMethod} />
-                {cashOutMethod !== "cash" && (
-                  <p className="text-xs text-muted-foreground">
-                    Recorded as owed via {PAYMENT_METHOD_LABEL[cashOutMethod]} until you mark it
-                    paid in Banker.
-                  </p>
-                )}
-              </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold text-foreground">Cash Out</span>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="Amount"
+                      value={cashOutAmount}
+                      onChange={(e) => setCashOutAmount(e.target.value)}
+                      aria-label="Cash out amount"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => void handleCashOut()}
+                      disabled={isBusy}
+                    >
+                      Cash Out
+                    </Button>
+                  </div>
+                  <PaymentMethodPicker value={cashOutMethod} onChange={setCashOutMethod} />
+                  {cashOutMethod !== "cash" && (
+                    <p className="text-xs text-muted-foreground">
+                      Recorded as owed via {PAYMENT_METHOD_LABEL[cashOutMethod]} until you mark it
+                      paid in Banker.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <Separator />
 

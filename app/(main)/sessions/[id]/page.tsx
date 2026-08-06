@@ -9,12 +9,13 @@ import {
   History,
   PauseCircle,
   PlayCircle,
+  Trophy,
   TrendingUp,
   UserPlus,
   Users,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AddTablePlayerSheet } from "@/components/session/add-table-player-sheet";
 import { CompletedSessionSummary } from "@/components/session/completed-session-summary";
@@ -35,6 +36,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useBlindTimer } from "@/hooks/use-blind-timer";
 import { useSessionTimer } from "@/hooks/use-session-timer";
 import { computeBankerSummary } from "@/lib/banker/banker-engine";
 import { BLIND_STRUCTURES } from "@/lib/session/constants";
@@ -42,8 +44,10 @@ import {
   formatCurrency,
   getCurrentDealer,
   getPlayerSummaries,
+  ordinal,
 } from "@/lib/session/services/session-engine";
 import { computeSessionSettlement } from "@/lib/settlement/settlement-engine";
+import { computeTournamentSummary } from "@/lib/tournament/tournament-engine";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
 
@@ -84,6 +88,17 @@ export default function LiveSessionPage() {
   }, [loadPlayerRecords]);
 
   const timerDisplay = useSessionTimer(liveState);
+  const blindTimer = useBlindTimer(liveState);
+
+  const autoAdvancedLevelRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!liveState || liveState.session.status !== "active" || liveState.isOnBreak) return;
+    if (blindTimer.remainingMs === null || blindTimer.remainingMs > 0) return;
+    if (autoAdvancedLevelRef.current === liveState.currentBlindLevel) return;
+    autoAdvancedLevelRef.current = liveState.currentBlindLevel;
+    void increaseBlind(sessionId);
+  }, [blindTimer.remainingMs, liveState, sessionId, increaseBlind]);
 
   if (notFound) {
     return (
@@ -130,8 +145,13 @@ export default function LiveSessionPage() {
   const players = getPlayerSummaries(events);
   const dealerPlayerId = getCurrentDealer(events);
   const cashedOutPlayers = players.filter((p) => p.isCashedOut);
+  const eliminatedPlayers = players
+    .filter((p) => p.isEliminated)
+    .sort((a, b) => (a.finishPosition ?? 0) - (b.finishPosition ?? 0));
   const bankerSummary = computeBankerSummary(events);
+  const isTournament = session.type === "tournament";
   const settlementPlan = computeSessionSettlement(events);
+  const tournamentSummary = computeTournamentSummary(events);
 
   const selectedSummary = players.find((p) => p.playerId === selectedPlayerId) ?? null;
   const selectedPlayerRecord =
@@ -168,9 +188,17 @@ export default function LiveSessionPage() {
               {session.host} · {session.location}
             </span>
           </div>
-          <Badge variant={isOnBreak ? "secondary" : "success"}>
-            {isOnBreak ? "On Break" : "Live"}
-          </Badge>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <Badge variant={isOnBreak ? "secondary" : "success"}>
+              {isOnBreak ? "On Break" : "Live"}
+            </Badge>
+            {isTournament && tournamentSummary.isFinalTable && (
+              <Badge className="gap-1">
+                <Trophy className="h-3 w-3" aria-hidden="true" />
+                Final Table
+              </Badge>
+            )}
+          </div>
         </header>
 
         <GlassCard className="flex flex-col items-center gap-2 p-6">
@@ -214,6 +242,11 @@ export default function LiveSessionPage() {
               <span className="text-2xl font-semibold text-foreground">
                 {blindLevel ? `${blindLevel.smallBlind}/${blindLevel.bigBlind}` : "—"}
               </span>
+              {blindLevel && blindLevel.ante > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Ante {formatCurrency(blindLevel.ante)}
+                </span>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -260,11 +293,18 @@ export default function LiveSessionPage() {
                 Next Level
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {nextBlindLevel
-                ? `Next: ${nextBlindLevel.smallBlind}/${nextBlindLevel.bigBlind}`
-                : "Final level reached"}
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                {nextBlindLevel
+                  ? `Next: ${nextBlindLevel.smallBlind}/${nextBlindLevel.bigBlind}`
+                  : "Final level reached"}
+              </p>
+              {blindTimer.remainingMs !== null && (
+                <span className="text-xs font-semibold tabular-nums text-gold">
+                  {blindTimer.remainingLabel} left
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -312,28 +352,54 @@ export default function LiveSessionPage() {
           </Card>
         </button>
 
-        <button
-          type="button"
-          onClick={() => router.push(`/sessions/${sessionId}/settle`)}
-          className="w-full text-left"
-        >
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
-                <HandCoins className="h-5 w-5 text-gold" aria-hidden="true" />
-              </div>
-              <div className="flex flex-1 flex-col gap-0.5">
-                <span className="text-sm font-medium text-foreground">Settle Up</span>
-                <span className="text-xs text-muted-foreground">
-                  {settlementPlan.transactions.length === 0
-                    ? "Who pays who"
-                    : `${settlementPlan.transactions.length} ${settlementPlan.transactions.length === 1 ? "payment" : "payments"} to settle`}
-                </span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            </CardContent>
-          </Card>
-        </button>
+        {isTournament ? (
+          <button
+            type="button"
+            onClick={() => router.push(`/sessions/${sessionId}/tournament`)}
+            className="w-full text-left"
+          >
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                  <Trophy className="h-5 w-5 text-gold" aria-hidden="true" />
+                </div>
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">Tournament Results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatCurrency(tournamentSummary.prizePool)} prize pool ·{" "}
+                    {tournamentSummary.remainingCount > 0
+                      ? `${tournamentSummary.remainingCount} left`
+                      : "Complete"}
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </CardContent>
+            </Card>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push(`/sessions/${sessionId}/settle`)}
+            className="w-full text-left"
+          >
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                  <HandCoins className="h-5 w-5 text-gold" aria-hidden="true" />
+                </div>
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">Settle Up</span>
+                  <span className="text-xs text-muted-foreground">
+                    {settlementPlan.transactions.length === 0
+                      ? "Who pays who"
+                      : `${settlementPlan.transactions.length} ${settlementPlan.transactions.length === 1 ? "payment" : "payments"} to settle`}
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </CardContent>
+            </Card>
+          </button>
+        )}
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
@@ -354,19 +420,35 @@ export default function LiveSessionPage() {
             onSelectSeat={setSelectedPlayerId}
           />
 
-          {cashedOutPlayers.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {cashedOutPlayers.map((player) => (
-                <button
-                  type="button"
-                  key={player.playerId}
-                  onClick={() => setSelectedPlayerId(player.playerId)}
-                >
-                  <Badge variant="secondary">{player.playerName} · Cashed Out</Badge>
-                </button>
-              ))}
-            </div>
-          )}
+          {isTournament
+            ? eliminatedPlayers.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {eliminatedPlayers.map((player) => (
+                    <button
+                      type="button"
+                      key={player.playerId}
+                      onClick={() => setSelectedPlayerId(player.playerId)}
+                    >
+                      <Badge variant="secondary">
+                        {player.playerName} · {ordinal(player.finishPosition ?? 0)}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )
+            : cashedOutPlayers.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {cashedOutPlayers.map((player) => (
+                    <button
+                      type="button"
+                      key={player.playerId}
+                      onClick={() => setSelectedPlayerId(player.playerId)}
+                    >
+                      <Badge variant="secondary">{player.playerName} · Cashed Out</Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
         </div>
 
         <Button variant="destructive" onClick={() => setConfirmEndOpen(true)}>
@@ -403,6 +485,7 @@ export default function LiveSessionPage() {
           summary={selectedSummary}
           isDealer={selectedPlayerId === dealerPlayerId}
           events={events}
+          isTournament={isTournament}
         />
       )}
 

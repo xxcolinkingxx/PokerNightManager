@@ -1,6 +1,6 @@
 import { PAYMENT_METHOD_LABEL } from "../constants";
 import type { PaymentMethod, SessionEvent, SessionEventType } from "../types";
-import { formatCurrency } from "./session-engine";
+import { formatCurrency, ordinal } from "./session-engine";
 
 function methodSuffix(method?: PaymentMethod): string {
   return method ? ` (${PAYMENT_METHOD_LABEL[method]})` : "";
@@ -30,6 +30,8 @@ export function describeSessionEvent(
       return `Blinds increased to ${event.payload.smallBlind}/${event.payload.bigBlind}`;
     case "player_left":
       return `${playerName(event.payload.playerId)} left the table`;
+    case "player_eliminated":
+      return `${playerName(event.payload.playerId)} eliminated in ${ordinal(event.payload.position)} place`;
     case "break_started":
       return "Break started";
     case "break_ended":
@@ -61,6 +63,7 @@ export function getEventPlayerId(event: SessionEvent): string | null {
     case "cash_out":
     case "dealer_changed":
     case "player_left":
+    case "player_eliminated":
     case "payment_settled":
       return event.payload.playerId;
     default:

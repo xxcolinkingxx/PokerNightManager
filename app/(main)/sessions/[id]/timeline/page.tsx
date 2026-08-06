@@ -13,6 +13,7 @@ import {
   LogOut,
   Play,
   RefreshCw,
+  Skull,
   TrendingUp,
   UserMinus,
   UserPlus,
@@ -46,6 +47,7 @@ const EVENT_ICON: Record<SessionEventType, LucideIcon> = {
   dealer_changed: Crown,
   blind_increased: TrendingUp,
   player_left: UserMinus,
+  player_eliminated: Skull,
   break_started: Coffee,
   break_ended: Play,
   pot_updated: Coins,
@@ -193,7 +195,8 @@ export default function TimelinePage() {
                   <span
                     className={cn(
                       "text-foreground",
-                      player.isCashedOut && "text-muted-foreground line-through",
+                      (player.isCashedOut || player.isEliminated) &&
+                        "text-muted-foreground line-through",
                     )}
                   >
                     {player.playerName}

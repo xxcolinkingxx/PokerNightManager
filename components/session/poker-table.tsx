@@ -20,12 +20,12 @@ export function PokerTable({
   playerRecords,
   onSelectSeat,
 }: PokerTableProps) {
-  const activePlayers = players.filter((p) => !p.isCashedOut);
+  const activePlayers = players.filter((p) => !p.isCashedOut && !p.isEliminated);
 
   if (activePlayers.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-8 text-center">
-        <p className="text-sm text-muted-foreground">Everyone has cashed out.</p>
+        <p className="text-sm text-muted-foreground">No active players remaining.</p>
       </div>
     );
   }

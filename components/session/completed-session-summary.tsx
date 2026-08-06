@@ -5,8 +5,9 @@ import { AnimatedPage } from "@/components/shared/animated-page";
 import { PageContainer } from "@/components/layout/page-container";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency, getPlayerSummaries } from "@/lib/session/services/session-engine";
+import { formatCurrency, getPlayerSummaries, ordinal } from "@/lib/session/services/session-engine";
 import { computeSessionSettlement } from "@/lib/settlement/settlement-engine";
+import { computeTournamentSummary } from "@/lib/tournament/tournament-engine";
 import type { Session, SessionEvent } from "@/lib/session/types";
 
 interface CompletedSessionSummaryProps {
@@ -20,8 +21,10 @@ export function CompletedSessionSummary({
   events,
   onBack,
 }: CompletedSessionSummaryProps) {
+  const isTournament = session.type === "tournament";
   const players = getPlayerSummaries(events);
   const settlementPlan = computeSessionSettlement(events);
+  const tournamentSummary = computeTournamentSummary(events);
 
   return (
     <PageContainer>
@@ -69,36 +72,70 @@ export function CompletedSessionSummary({
           </Card>
         </Link>
 
-        <Link href={`/sessions/${session.id}/settle`}>
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
-                <HandCoins className="h-5 w-5 text-gold" aria-hidden="true" />
-              </div>
-              <div className="flex flex-1 flex-col gap-0.5">
-                <span className="text-sm font-medium text-foreground">Settle Up</span>
-                <span className="text-xs text-muted-foreground">
-                  {settlementPlan.transactions.length === 0
-                    ? "Who pays who"
-                    : `${settlementPlan.transactions.length} ${settlementPlan.transactions.length === 1 ? "payment" : "payments"} to settle`}
-                </span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            </CardContent>
-          </Card>
-        </Link>
-
-        <div className="flex flex-col gap-2">
-          {players.map((player) => (
-            <Card key={player.playerId}>
-              <CardContent className="flex items-center justify-between p-3.5">
-                <span className="text-sm font-medium text-foreground">{player.playerName}</span>
-                <span className="text-sm text-muted-foreground">
-                  {formatCurrency(player.total)}
-                </span>
+        {isTournament ? (
+          <Link href={`/sessions/${session.id}/tournament`}>
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                  <Trophy className="h-5 w-5 text-gold" aria-hidden="true" />
+                </div>
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">Tournament Results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatCurrency(tournamentSummary.prizePool)} prize pool
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               </CardContent>
             </Card>
-          ))}
+          </Link>
+        ) : (
+          <Link href={`/sessions/${session.id}/settle`}>
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                  <HandCoins className="h-5 w-5 text-gold" aria-hidden="true" />
+                </div>
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">Settle Up</span>
+                  <span className="text-xs text-muted-foreground">
+                    {settlementPlan.transactions.length === 0
+                      ? "Who pays who"
+                      : `${settlementPlan.transactions.length} ${settlementPlan.transactions.length === 1 ? "payment" : "payments"} to settle`}
+                  </span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        <div className="flex flex-col gap-2">
+          {isTournament
+            ? tournamentSummary.standings.map((standing) => (
+                <Card key={standing.playerId}>
+                  <CardContent className="flex items-center justify-between p-3.5">
+                    <span className="text-sm font-medium text-foreground">
+                      {ordinal(standing.position)} · {standing.playerName}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {standing.isPaid ? formatCurrency(standing.payout) : "—"}
+                    </span>
+                  </CardContent>
+                </Card>
+              ))
+            : players.map((player) => (
+                <Card key={player.playerId}>
+                  <CardContent className="flex items-center justify-between p-3.5">
+                    <span className="text-sm font-medium text-foreground">
+                      {player.playerName}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatCurrency(player.total)}
+                    </span>
+                  </CardContent>
+                </Card>
+              ))}
         </div>
       </AnimatedPage>
     </PageContainer>

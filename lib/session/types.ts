@@ -81,6 +81,7 @@ export type SessionEventType =
   | "dealer_changed"
   | "blind_increased"
   | "player_left"
+  | "player_eliminated"
   | "break_started"
   | "break_ended"
   | "pot_updated"
@@ -101,6 +102,11 @@ export interface SessionEventPayloads {
   dealer_changed: { playerId: string };
   blind_increased: { level: number; smallBlind: number; bigBlind: number };
   player_left: { playerId: string };
+  // Tournament-only: recorded when a player busts out. `position` is the
+  // finishing place, computed at elimination time from how many players
+  // were still in (the last player standing implicitly finishes 1st and
+  // never gets one of these).
+  player_eliminated: { playerId: string; position: number };
   break_started: Record<string, never>;
   break_ended: Record<string, never>;
   pot_updated: { amount: number; action: "set" | "add" | "clear" };
@@ -136,6 +142,9 @@ export interface SessionState {
   isOnBreak: boolean;
   currentPot: number;
   currentBlindLevel: number;
+  // Milliseconds left in the current blind level as of when this state
+  // was fetched, or null once there's no further level to count down to.
+  blindLevelRemainingMs: number | null;
 }
 
 export interface SessionWithEvents {

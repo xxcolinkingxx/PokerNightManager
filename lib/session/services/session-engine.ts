@@ -96,6 +96,62 @@ export function getCurrentBlindLevel(
   return current;
 }
 
+// Elapsed time within the *current* blind level -- anchored to the most
+// recent blind_increased event (or session start, if still on level 1),
+// with break time subtracted the same way computeElapsedMs does for the
+// whole session.
+export function computeBlindLevelElapsedMs(
+  events: SessionEvent[],
+  now: Date = new Date(),
+): number {
+  const started = events.find((e) => e.type === "session_started");
+  if (!started) return 0;
+
+  let anchor = new Date(started.timestamp).getTime();
+  for (const event of events) {
+    if (event.type === "blind_increased") {
+      anchor = new Date(event.timestamp).getTime();
+    }
+  }
+
+  let elapsed = now.getTime() - anchor;
+  let breakStart: number | null = null;
+
+  for (const event of events) {
+    const time = new Date(event.timestamp).getTime();
+    if (time < anchor) continue;
+    if (event.type === "break_started") {
+      breakStart = time;
+    } else if (event.type === "break_ended" && breakStart !== null) {
+      elapsed -= time - breakStart;
+      breakStart = null;
+    }
+  }
+
+  if (breakStart !== null) {
+    elapsed -= now.getTime() - breakStart;
+  }
+
+  return Math.max(0, elapsed);
+}
+
+// Milliseconds left in the current blind level, or null once the
+// structure has no further levels to time toward (final level).
+export function computeBlindLevelRemainingMs(
+  events: SessionEvent[],
+  blindStructureId: string,
+  now: Date = new Date(),
+): number | null {
+  const structure = BLIND_STRUCTURES.find((s) => s.id === blindStructureId);
+  const current = getCurrentBlindLevel(events, blindStructureId);
+  const hasNextLevel = structure?.levels.some((l) => l.level === current.level + 1) ?? false;
+  if (!hasNextLevel) return null;
+
+  const durationMs = current.durationMinutes * 60_000;
+  const elapsed = computeBlindLevelElapsedMs(events, now);
+  return Math.max(0, durationMs - elapsed);
+}
+
 export function buildSessionState(
   session: Session,
   events: SessionEvent[],
@@ -111,6 +167,11 @@ export function buildSessionState(
       events,
       session.blindStructureId,
     ).level,
+    blindLevelRemainingMs: computeBlindLevelRemainingMs(
+      events,
+      session.blindStructureId,
+      now,
+    ),
   };
 }
 
@@ -146,6 +207,9 @@ export interface PlayerSessionSummary {
   cashOutTotal: number;
   seat: number;
   isCashedOut: boolean;
+  // Tournament-only: set once a player_eliminated event fires for them.
+  isEliminated: boolean;
+  finishPosition: number | null;
 }
 
 export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary[] {
@@ -154,6 +218,7 @@ export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary
   const buyInTotals = new Map<string, number>();
   const cashOutTotals = new Map<string, number>();
   const cashedOut = new Set<string>();
+  const finishPositions = new Map<string, number>();
 
   for (const event of events) {
     if (event.type === "player_joined") {
@@ -168,6 +233,8 @@ export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary
       const { playerId, amount } = event.payload;
       cashOutTotals.set(playerId, (cashOutTotals.get(playerId) ?? 0) + amount);
       cashedOut.add(playerId);
+    } else if (event.type === "player_eliminated") {
+      finishPositions.set(event.payload.playerId, event.payload.position);
     }
   }
 
@@ -185,6 +252,8 @@ export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary
       // data migration.
       seat: index + 1,
       isCashedOut: cashedOut.has(playerId),
+      isEliminated: finishPositions.has(playerId),
+      finishPosition: finishPositions.get(playerId) ?? null,
     };
   });
 }
@@ -204,6 +273,21 @@ export function computePeakPot(events: SessionEvent[]): number {
   }
 
   return peak;
+}
+
+export function ordinal(n: number): string {
+  const remainder100 = n % 100;
+  if (remainder100 >= 11 && remainder100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
 }
 
 export function getCurrentDealer(events: SessionEvent[]): string | null {

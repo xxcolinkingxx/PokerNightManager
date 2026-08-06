@@ -1,7 +1,7 @@
 import { sessionEventRepository } from "@/lib/db/repositories/session-event-repository";
 import { sessionRepository } from "@/lib/db/repositories/session-repository";
 import { playerRepository } from "@/lib/db/repositories/player-repository";
-import { buildSessionState } from "@/lib/session/services/session-engine";
+import { buildSessionState, getPlayerSummaries } from "@/lib/session/services/session-engine";
 import type {
   PaymentMethod,
   Session,
@@ -128,6 +128,19 @@ export class SessionService {
     method: PaymentMethod,
   ): Promise<SessionState> {
     await sessionEventRepository.append(sessionId, "cash_out", { playerId, amount, method });
+    return this.getSessionState(sessionId);
+  }
+
+  async eliminatePlayer(sessionId: string, playerId: string): Promise<SessionState> {
+    const state = await this.getSessionState(sessionId);
+    const activeCount = getPlayerSummaries(state.events).filter(
+      (s) => !s.isEliminated && !s.isCashedOut,
+    ).length;
+
+    await sessionEventRepository.append(sessionId, "player_eliminated", {
+      playerId,
+      position: activeCount,
+    });
     return this.getSessionState(sessionId);
   }
 

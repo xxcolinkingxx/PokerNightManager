@@ -28,37 +28,41 @@ function getServerClockSnapshot() {
   return 0;
 }
 
-export function useSessionTimer(liveState: SessionState | null): string {
-  // useSyncExternalStore is the sanctioned way to read an always-changing
-  // external value (the wall clock) during render.
-  const now = useSyncExternalStore(
-    subscribeToClock,
-    getClockSnapshot,
-    getServerClockSnapshot,
-  );
+export interface BlindTimerResult {
+  // null once the structure has no further levels to count down to.
+  remainingMs: number | null;
+  remainingLabel: string;
+}
+
+export function useBlindTimer(liveState: SessionState | null): BlindTimerResult {
+  const now = useSyncExternalStore(subscribeToClock, getClockSnapshot, getServerClockSnapshot);
 
   const isActive = liveState !== null && liveState.session.status === "active";
   const isRunning = isActive && liveState !== null && !liveState.isOnBreak;
-  const baseElapsedMs = liveState?.elapsedMs ?? 0;
+  const baseRemainingMs = liveState?.blindLevelRemainingMs ?? null;
 
   // Re-anchor the baseline whenever the store hands us a fresh snapshot
-  // (new session, blind change, break toggled, etc). `now` is already a
-  // render-safe value from the store above, so this stays pure.
+  // (new session, blind change, break toggled, etc) -- mirrors
+  // useSessionTimer's pattern so this stays a cheap tick-by-subtraction
+  // instead of re-scanning the event log every second.
   const [baseline, setBaseline] = useState({
-    elapsedMs: baseElapsedMs,
+    remainingMs: baseRemainingMs,
     capturedAt: now,
   });
-  if (baseline.elapsedMs !== baseElapsedMs) {
-    setBaseline({ elapsedMs: baseElapsedMs, capturedAt: now });
+  if (baseline.remainingMs !== baseRemainingMs) {
+    setBaseline({ remainingMs: baseRemainingMs, capturedAt: now });
   }
 
-  if (!isActive) {
-    return "00:00";
+  if (!isActive || baseline.remainingMs === null) {
+    return {
+      remainingMs: null,
+      remainingLabel: isActive ? "Final Level" : "--:--",
+    };
   }
 
-  const elapsed = isRunning
-    ? baseline.elapsedMs + Math.max(0, now - baseline.capturedAt)
-    : baseline.elapsedMs;
+  const remainingMs = isRunning
+    ? Math.max(0, baseline.remainingMs - Math.max(0, now - baseline.capturedAt))
+    : baseline.remainingMs;
 
-  return formatElapsedTime(elapsed);
+  return { remainingMs, remainingLabel: formatElapsedTime(remainingMs) };
 }
