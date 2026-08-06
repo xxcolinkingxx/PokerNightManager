@@ -11,6 +11,7 @@ import {
   Coins,
   Download,
   MapPin,
+  Trash2,
   TriangleAlert,
   Upload,
   User,
@@ -34,7 +35,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { exportBackup, parseBackupFile, restoreBackup, type BackupFile } from "@/lib/backup/backup-service";
+import { useSessionStore } from "@/stores/session-store";
 import { useSettingsStore } from "@/stores/settings-store";
+
+const DELETE_ALL_CONFIRM_PHRASE = "DELETE";
 
 const settingsSchema = z.object({
   hostName: z.string().max(100),
@@ -85,10 +89,16 @@ function Element115Badge() {
 
 export default function SettingsPage() {
   const { settings, isLoading, updateSettings } = useSettingsStore();
+  const deleteAllSessions = useSessionStore((s) => s.deleteAllSessions);
 
   const [backupStatus, setBackupStatus] = useState<BackupStatus>({ state: "idle" });
   const [pendingRestore, setPendingRestore] = useState<BackupFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [deleteSessionsOpen, setDeleteSessionsOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingSessions, setIsDeletingSessions] = useState(false);
+  const [deleteSessionsError, setDeleteSessionsError] = useState<string | null>(null);
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -158,6 +168,29 @@ export default function SettingsPage() {
     } catch {
       setPendingRestore(null);
       setBackupStatus({ state: "error", message: "Restore failed. Your data wasn't changed." });
+    }
+  }
+
+  function closeDeleteSessionsSheet(open: boolean) {
+    setDeleteSessionsOpen(open);
+    if (!open) {
+      setDeleteConfirmText("");
+      setDeleteSessionsError(null);
+    }
+  }
+
+  async function handleConfirmDeleteAllSessions() {
+    setIsDeletingSessions(true);
+    setDeleteSessionsError(null);
+    try {
+      await deleteAllSessions();
+      closeDeleteSessionsSheet(false);
+    } catch (error) {
+      setDeleteSessionsError(
+        error instanceof Error ? error.message : "Couldn't delete sessions. Try again.",
+      );
+    } finally {
+      setIsDeletingSessions(false);
     }
   }
 
@@ -307,6 +340,30 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          <Card className="border-danger/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base text-danger">
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Danger Zone
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground">
+                Permanently delete every session and its full history. Players and their
+                profiles aren&apos;t affected, but every stat derived from session history
+                resets to zero.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setDeleteSessionsOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete All Sessions
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -348,6 +405,49 @@ export default function SettingsPage() {
             </Button>
             <Button variant="destructive" onClick={() => void handleConfirmRestore()}>
               Restore
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={deleteSessionsOpen} onOpenChange={closeDeleteSessionsSheet}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Delete all sessions?</SheetTitle>
+            <SheetDescription>
+              This permanently deletes every session and its full history -- buy-ins,
+              cash-outs, timelines, everything. Players and their profiles are not affected,
+              but every stat derived from session history (leaderboards, attendance,
+              head-to-head) resets to zero. This can&apos;t be undone.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-2 px-6">
+            <Label htmlFor="deleteConfirmText">
+              Type <span className="font-semibold text-foreground">DELETE</span> to confirm
+            </Label>
+            <Input
+              id="deleteConfirmText"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              placeholder="DELETE"
+            />
+            {deleteSessionsError && <p className="text-xs text-danger">{deleteSessionsError}</p>}
+          </div>
+          <SheetFooter>
+            <Button variant="secondary" onClick={() => closeDeleteSessionsSheet(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                deleteConfirmText !== DELETE_ALL_CONFIRM_PHRASE || isDeletingSessions
+              }
+              onClick={() => void handleConfirmDeleteAllSessions()}
+            >
+              {isDeletingSessions ? "Deleting..." : "Delete All Sessions"}
             </Button>
           </SheetFooter>
         </SheetContent>

@@ -1,3 +1,4 @@
+import { db } from "@/lib/db/database";
 import { sessionEventRepository } from "@/lib/db/repositories/session-event-repository";
 import { sessionRepository } from "@/lib/db/repositories/session-repository";
 import { playerRepository } from "@/lib/db/repositories/player-repository";
@@ -214,6 +215,22 @@ export class SessionService {
 
   async getActiveSession(): Promise<Session | undefined> {
     return sessionRepository.getActive();
+  }
+
+  // Wipes every session and its full event history -- players and their
+  // profiles are untouched, but every stat derived from session history
+  // (leaderboards, attendance, head-to-head, etc.) resets to zero since
+  // there's nothing left to derive it from. Blocked while a game is
+  // actually in progress so nobody loses a live session by accident.
+  async deleteAllSessions(): Promise<void> {
+    const active = await sessionRepository.getActive();
+    if (active) {
+      throw new Error("End your active session before deleting all sessions");
+    }
+
+    await db.transaction("rw", [db.sessions, db.sessionEvents], async () => {
+      await Promise.all([db.sessions.clear(), db.sessionEvents.clear()]);
+    });
   }
 }
 

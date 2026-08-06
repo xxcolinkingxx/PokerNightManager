@@ -147,6 +147,7 @@ interface SessionStoreState {
   ) => Promise<void>;
   recordCashCount: (sessionId: string, amount: number) => Promise<void>;
   endSession: (sessionId: string) => Promise<void>;
+  deleteAllSessions: () => Promise<void>;
 }
 
 export const useSessionStore = create<SessionStoreState>((set) => ({
@@ -235,5 +236,11 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
     await sessionService.endSession(sessionId);
     triggerHaptic("success");
     set({ liveState: null, activeSession: null });
+  },
+
+  deleteAllSessions: async () => {
+    await sessionService.deleteAllSessions();
+    triggerHaptic("warning");
+    set({ sessions: [], activeSession: null, liveState: null });
   },
 }));
