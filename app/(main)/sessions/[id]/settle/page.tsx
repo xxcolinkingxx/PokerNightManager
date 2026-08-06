@@ -101,6 +101,18 @@ export default function SettleUpPage() {
           </div>
         )}
 
+        {plan.hasImbalance && (
+          <div className="flex items-start gap-3 rounded-2xl border border-danger/30 bg-danger/5 p-4">
+            <TriangleAlert className="h-4 w-4 shrink-0 text-danger" aria-hidden="true" />
+            <p className="text-sm text-foreground">
+              These numbers don&apos;t add up -- total cash-outs are{" "}
+              {formatCurrency(Math.abs(plan.imbalance))} {plan.imbalance > 0 ? "more" : "less"} than
+              total buy-ins. Double-check everyone&apos;s buy-in and cash-out amounts before
+              settling up.
+            </p>
+          </div>
+        )}
+
         {plan.nets.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 p-8 text-center">

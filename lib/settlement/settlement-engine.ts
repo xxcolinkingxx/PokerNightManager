@@ -17,10 +17,23 @@ export interface PlayerNet {
   amount: number;
 }
 
+// Below this, a leftover cent is floating-point dust from repeated
+// add/subtract, not a real discrepancy worth flagging.
+const IMBALANCE_EPSILON = 0.005;
+
 export interface SettlementPlan {
   nets: PlayerNet[];
   transactions: SettlementTransaction[];
   pendingPlayerNames: string[];
+  // Total cash-outs minus total buy-ins, across cashed-out players only.
+  // Chips don't appear or vanish -- once everyone's cashed out this
+  // should be (near) zero, so a nonzero value means some buy-in or
+  // cash-out amount was very likely entered wrong.
+  imbalance: number;
+  // Only meaningful once nobody's pending -- a nonzero imbalance while
+  // players are still mid-session just means their money hasn't left
+  // the table yet, which is normal and not an error.
+  hasImbalance: boolean;
 }
 
 // Greedy largest-debtor-to-largest-creditor matching. Not always the
@@ -77,9 +90,13 @@ export function computeSessionSettlement(events: SessionEvent[]): SettlementPlan
     amount: s.cashOutTotal - s.buyInTotal,
   }));
 
+  const imbalance = Math.round(nets.reduce((sum, n) => sum + n.amount, 0) * 100) / 100;
+
   return {
     nets: nets.sort((a, b) => b.amount - a.amount),
     transactions: computeSettlementTransactions(nets),
     pendingPlayerNames: pending.map((p) => p.playerName),
+    imbalance,
+    hasImbalance: pending.length === 0 && Math.abs(imbalance) > IMBALANCE_EPSILON,
   };
 }

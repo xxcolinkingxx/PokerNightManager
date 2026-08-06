@@ -104,4 +104,60 @@ describe("computeSessionSettlement", () => {
     expect(plan.transactions).toEqual([]);
     expect(plan.pendingPlayerNames).toEqual(["Alice"]);
   });
+
+  it("has no imbalance when total cash-outs match total buy-ins", () => {
+    const events = [
+      playerJoined("p1", "Alice"),
+      playerJoined("p2", "Bob"),
+      buyIn("p1", 50),
+      buyIn("p2", 50),
+      cashOut("p1", 80),
+      cashOut("p2", 20),
+    ];
+    const plan = computeSessionSettlement(events);
+    expect(plan.imbalance).toBe(0);
+    expect(plan.hasImbalance).toBe(false);
+  });
+
+  it("flags an imbalance once everyone's cashed out and the totals don't match", () => {
+    const events = [
+      playerJoined("p1", "Alice"),
+      playerJoined("p2", "Bob"),
+      buyIn("p1", 50),
+      buyIn("p2", 50),
+      // Total buy-in $100, but only $90 cashed out -- $10 unaccounted for
+      // (a cash-out was very likely mistyped).
+      cashOut("p1", 70),
+      cashOut("p2", 20),
+    ];
+    const plan = computeSessionSettlement(events);
+    expect(plan.imbalance).toBe(-10);
+    expect(plan.hasImbalance).toBe(true);
+  });
+
+  it("doesn't flag an imbalance while someone still hasn't cashed out", () => {
+    const events = [
+      playerJoined("p1", "Alice"),
+      playerJoined("p2", "Bob"),
+      buyIn("p1", 50),
+      buyIn("p2", 50),
+      cashOut("p1", 20),
+      // Bob is still at the table -- his $50 is legitimately still "missing".
+    ];
+    const plan = computeSessionSettlement(events);
+    expect(plan.hasImbalance).toBe(false);
+  });
+
+  it("doesn't flag floating-point dust as a real imbalance", () => {
+    const events = [
+      playerJoined("p1", "Alice"),
+      playerJoined("p2", "Bob"),
+      buyIn("p1", 33.33),
+      buyIn("p2", 33.34),
+      cashOut("p1", 33.34),
+      cashOut("p2", 33.33),
+    ];
+    const plan = computeSessionSettlement(events);
+    expect(plan.hasImbalance).toBe(false);
+  });
 });
