@@ -47,6 +47,10 @@ export class PlayerRepository {
   async count(): Promise<number> {
     return db.players.count();
   }
+
+  async remove(id: string): Promise<void> {
+    await db.players.delete(id);
+  }
 }
 
 export const playerRepository = new PlayerRepository();
