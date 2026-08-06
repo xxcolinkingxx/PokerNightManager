@@ -1,9 +1,10 @@
 "use client";
 
-import { Calendar, Clock, Plus, Spade } from "lucide-react";
+import { Calendar, Clock, Plus, Send, Spade } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { CreateInviteSheet } from "@/components/invites/create-invite-sheet";
 import { NewSessionWizard } from "@/components/session/new-session-wizard";
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { StaggerItem, StaggerList } from "@/components/shared/stagger-list";
@@ -12,11 +13,18 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getHostInvites, type HostInviteLogEntry } from "@/lib/invites/host-invite-log";
 import { formatCurrency } from "@/lib/session/services/session-engine";
 import type { Session, SessionTemplate } from "@/lib/session/types";
 import { useSessionTemplateStore } from "@/stores/session-template-store";
 import { useSessionStore, useWizardStore } from "@/stores/session-store";
 import { useSettingsStore } from "@/stores/settings-store";
+
+function formatInviteDateLabel(date: string): string {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 const STATUS_LABEL: Record<Session["status"], string> = {
   draft: "Draft",
@@ -33,8 +41,11 @@ export default function SessionsPage() {
   const loadTemplates = useSessionTemplateStore((s) => s.loadTemplates);
   const wizardReset = useWizardStore((s) => s.reset);
   const loadFromTemplate = useWizardStore((s) => s.loadFromTemplate);
+  const wizardOpen = useWizardStore((s) => s.isOpen);
+  const setWizardOpen = useWizardStore((s) => s.setOpen);
   const settings = useSettingsStore((s) => s.settings);
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [hostInvites, setHostInvites] = useState<HostInviteLogEntry[]>([]);
 
   useEffect(() => {
     void loadSessions();
@@ -43,6 +54,13 @@ export default function SessionsPage() {
   useEffect(() => {
     void loadTemplates();
   }, [loadTemplates]);
+
+  useEffect(() => {
+    async function load() {
+      setHostInvites(getHostInvites());
+    }
+    void load();
+  }, [inviteOpen]);
 
   const activeCount = sessions.filter((s) => s.status === "active").length;
   const scheduledCount = sessions.filter((s) => s.status === "draft").length;
@@ -71,10 +89,21 @@ export default function SessionsPage() {
           title="Sessions"
           subtitle="Manage your poker nights"
           action={
-            <Button size="sm" aria-label="Create new session" onClick={handleNewSession}>
-              <Plus className="h-4 w-4" />
-              New
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label="Invite guests"
+                onClick={() => setInviteOpen(true)}
+              >
+                <Send className="h-4 w-4" />
+                Invite
+              </Button>
+              <Button size="sm" aria-label="Create new session" onClick={handleNewSession}>
+                <Plus className="h-4 w-4" />
+                New
+              </Button>
+            </div>
           }
         />
 
@@ -99,6 +128,33 @@ export default function SessionsPage() {
                         {template.playerIds.length === 1
                           ? "1 player"
                           : `${template.playerIds.length} players`}
+                      </span>
+                    </CardContent>
+                  </Card>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {hostInvites.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-foreground">My Invites</span>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {hostInvites.map((invite) => (
+                <button
+                  key={invite.id}
+                  type="button"
+                  onClick={() => router.push(`/invites/${invite.id}`)}
+                  className="shrink-0"
+                >
+                  <Card>
+                    <CardContent className="flex w-40 flex-col gap-1 p-3.5 text-left">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {invite.gameName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatInviteDateLabel(invite.date)}
                       </span>
                     </CardContent>
                   </Card>
@@ -176,6 +232,13 @@ export default function SessionsPage() {
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         onCreated={handleCreated}
+      />
+
+      <CreateInviteSheet
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        defaultHostName={settings?.hostName || ""}
+        defaultLocation={settings?.defaultLocation || ""}
       />
     </PageContainer>
   );

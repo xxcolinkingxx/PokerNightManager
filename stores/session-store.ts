@@ -32,6 +32,11 @@ interface WizardState {
   data: WizardFormData;
   players: Player[];
   isLoading: boolean;
+  // Lives here (not local component state) so a different route -- the
+  // invite detail page's "Start Session with RSVPs" -- can populate and
+  // open the wizard before navigating to the page that renders it.
+  isOpen: boolean;
+  setOpen: (open: boolean) => void;
   setStep: (step: WizardStep) => void;
   updateData: (partial: Partial<WizardFormData>) => void;
   loadPlayers: () => Promise<void>;
@@ -47,6 +52,9 @@ export const useWizardStore = create<WizardState>((set, get) => ({
   data: defaultWizardData,
   players: [],
   isLoading: false,
+  isOpen: false,
+
+  setOpen: (open) => set({ isOpen: open }),
 
   setStep: (step) => set({ step }),
 
