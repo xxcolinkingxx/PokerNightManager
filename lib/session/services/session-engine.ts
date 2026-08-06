@@ -134,3 +134,36 @@ export function formatCurrency(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+export interface PlayerSessionSummary {
+  playerId: string;
+  playerName: string;
+  total: number;
+}
+
+export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary[] {
+  const order: string[] = [];
+  const names = new Map<string, string>();
+  const totals = new Map<string, number>();
+
+  for (const event of events) {
+    if (event.type === "player_joined") {
+      const { playerId, playerName } = event.payload;
+      if (!names.has(playerId)) order.push(playerId);
+      names.set(playerId, playerName);
+      if (!totals.has(playerId)) totals.set(playerId, 0);
+    } else if (event.type === "buy_in" || event.type === "rebuy") {
+      const { playerId, amount } = event.payload;
+      totals.set(playerId, (totals.get(playerId) ?? 0) + amount);
+    } else if (event.type === "cash_out") {
+      const { playerId, amount } = event.payload;
+      totals.set(playerId, (totals.get(playerId) ?? 0) - amount);
+    }
+  }
+
+  return order.map((playerId) => ({
+    playerId,
+    playerName: names.get(playerId) ?? "Unknown",
+    total: totals.get(playerId) ?? 0,
+  }));
+}
