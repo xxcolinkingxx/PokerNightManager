@@ -1,9 +1,10 @@
 "use client";
 
-import { Calendar, Clock, Plus, Spade } from "lucide-react";
+import { Calendar, Clock, Plus, Send, Spade } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { CreateInviteSheet } from "@/components/invites/create-invite-sheet";
 import { NewSessionWizard } from "@/components/session/new-session-wizard";
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { StaggerItem, StaggerList } from "@/components/shared/stagger-list";
@@ -35,6 +36,7 @@ export default function SessionsPage() {
   const loadFromTemplate = useWizardStore((s) => s.loadFromTemplate);
   const settings = useSettingsStore((s) => s.settings);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     void loadSessions();
@@ -71,10 +73,21 @@ export default function SessionsPage() {
           title="Sessions"
           subtitle="Manage your poker nights"
           action={
-            <Button size="sm" aria-label="Create new session" onClick={handleNewSession}>
-              <Plus className="h-4 w-4" />
-              New
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label="Invite guests"
+                onClick={() => setInviteOpen(true)}
+              >
+                <Send className="h-4 w-4" />
+                Invite
+              </Button>
+              <Button size="sm" aria-label="Create new session" onClick={handleNewSession}>
+                <Plus className="h-4 w-4" />
+                New
+              </Button>
+            </div>
           }
         />
 
@@ -176,6 +189,13 @@ export default function SessionsPage() {
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         onCreated={handleCreated}
+      />
+
+      <CreateInviteSheet
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        defaultHostName={settings?.hostName || ""}
+        defaultLocation={settings?.defaultLocation || ""}
       />
     </PageContainer>
   );
