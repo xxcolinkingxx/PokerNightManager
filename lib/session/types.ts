@@ -33,9 +33,21 @@ export interface Player {
   id: string;
   name: string;
   nickname: string;
+  avatar?: Blob;
+  phone?: string;
+  notes?: string;
+  venmo?: string;
+  cashApp?: string;
+  appleCash?: string;
+  zelle?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+export type PlayerProfileFields = Pick<
+  Player,
+  "name" | "nickname" | "avatar" | "phone" | "notes" | "venmo" | "cashApp" | "appleCash" | "zelle"
+>;
 
 export interface Session {
   id: string;

@@ -1,5 +1,5 @@
 import { db } from "../database";
-import type { Player } from "@/lib/session/types";
+import type { Player, PlayerProfileFields } from "@/lib/session/types";
 import { generateId } from "@/lib/session/services/session-engine";
 
 export class PlayerRepository {
@@ -28,10 +28,7 @@ export class PlayerRepository {
     return player;
   }
 
-  async update(
-    id: string,
-    partial: Partial<Pick<Player, "name" | "nickname">>,
-  ): Promise<Player> {
+  async update(id: string, partial: Partial<PlayerProfileFields>): Promise<Player> {
     const existing = await this.getById(id);
     if (!existing) throw new Error("Player not found");
 

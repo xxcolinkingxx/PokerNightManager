@@ -1,13 +1,14 @@
 import { create } from "zustand";
 
 import { playerRepository } from "@/lib/db/repositories/player-repository";
-import type { Player } from "@/lib/session/types";
+import type { Player, PlayerProfileFields } from "@/lib/session/types";
 
 interface PlayerStoreState {
   players: Player[];
   isLoading: boolean;
   loadPlayers: () => Promise<void>;
   addPlayer: (name: string, nickname?: string) => Promise<Player>;
+  updatePlayer: (id: string, partial: Partial<PlayerProfileFields>) => Promise<Player>;
   removePlayer: (id: string) => Promise<void>;
 }
 
@@ -27,6 +28,16 @@ export const usePlayerStore = create<PlayerStoreState>((set) => ({
       players: [...state.players, player].sort((a, b) => a.name.localeCompare(b.name)),
     }));
     return player;
+  },
+
+  updatePlayer: async (id, partial) => {
+    const updated = await playerRepository.update(id, partial);
+    set((state) => ({
+      players: state.players
+        .map((p) => (p.id === id ? updated : p))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+    return updated;
   },
 
   removePlayer: async (id) => {

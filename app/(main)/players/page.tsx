@@ -1,13 +1,14 @@
 "use client";
 
 import { Plus, Search, Trash2, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { AddPlayerSheet } from "@/components/player/add-player-sheet";
+import { PlayerAvatar } from "@/components/player/player-avatar";
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/layout/page-header";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,16 +23,8 @@ import {
 import type { Player } from "@/lib/session/types";
 import { usePlayerStore } from "@/stores/player-store";
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
 export default function PlayersPage() {
+  const router = useRouter();
   const players = usePlayerStore((s) => s.players);
   const loadPlayers = usePlayerStore((s) => s.loadPlayers);
   const removePlayer = usePlayerStore((s) => s.removePlayer);
@@ -112,29 +105,44 @@ export default function PlayersPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {filteredPlayers.map((player) => (
-              <Card key={player.id}>
-                <CardContent className="flex items-center gap-3 p-3.5">
-                  <Avatar>
-                    <AvatarFallback>{initials(player.nickname || player.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-1 flex-col">
-                    <span className="text-sm font-medium text-foreground">
-                      {player.nickname || player.name}
-                    </span>
-                    {player.nickname && player.nickname !== player.name && (
-                      <span className="text-xs text-muted-foreground">{player.name}</span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(player)}
-                    aria-label={`Remove ${player.name}`}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </CardContent>
-              </Card>
+              <div
+                key={player.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push(`/players/${player.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/players/${player.id}`);
+                  }
+                }}
+                className="cursor-pointer"
+              >
+                <Card>
+                  <CardContent className="flex items-center gap-3 p-3.5">
+                    <PlayerAvatar name={player.nickname || player.name} avatar={player.avatar} />
+                    <div className="flex flex-1 flex-col">
+                      <span className="text-sm font-medium text-foreground">
+                        {player.nickname || player.name}
+                      </span>
+                      {player.nickname && player.nickname !== player.name && (
+                        <span className="text-xs text-muted-foreground">{player.name}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTarget(player);
+                      }}
+                      aria-label={`Remove ${player.name}`}
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
         )}

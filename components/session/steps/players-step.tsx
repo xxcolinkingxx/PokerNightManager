@@ -3,7 +3,7 @@
 import { Check, Plus, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PlayerAvatar } from "@/components/player/player-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { playersStepSchema } from "@/lib/session/schemas";
@@ -12,15 +12,6 @@ import { useWizardStore } from "@/stores/session-store";
 
 import { WizardStepFooter } from "../wizard-step-footer";
 import { WizardStepHeader } from "../wizard-step-header";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
 
 export function PlayersStep() {
   const players = useWizardStore((s) => s.players);
@@ -108,9 +99,10 @@ export function PlayersStep() {
                   isSelected ? "border-gold bg-gold/5" : "border-border bg-card",
                 )}
               >
-                <Avatar>
-                  <AvatarFallback>{initials(player.nickname || player.name)}</AvatarFallback>
-                </Avatar>
+                <PlayerAvatar
+                  name={player.nickname || player.name}
+                  avatar={player.avatar}
+                />
                 <span className="flex-1 text-sm font-medium text-foreground">
                   {player.nickname || player.name}
                 </span>
