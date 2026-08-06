@@ -1,4 +1,4 @@
-const CACHE_NAME = "poker-night-manager-v1";
+const CACHE_NAME = "poker-night-manager-v2";
 const OFFLINE_URL = "/~offline";
 
 const PRECACHE_URLS = [
@@ -10,6 +10,9 @@ const PRECACHE_URLS = [
   OFFLINE_URL,
   "/manifest.webmanifest",
   "/icons/icon.svg",
+  "/icons/icon-180.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {

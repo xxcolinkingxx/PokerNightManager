@@ -62,15 +62,28 @@ export function ChipDenominationRow({
       <div className="grid grid-cols-3 gap-2">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Label</span>
-          <Input {...register(`chips.${index}.label`)} />
+          <Input
+            aria-label={`Chip ${index + 1} label`}
+            {...register(`chips.${index}.label`)}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Value ($)</span>
-          <Input type="number" inputMode="decimal" {...register(`chips.${index}.value`)} />
+          <Input
+            type="number"
+            inputMode="decimal"
+            aria-label={`Chip ${index + 1} value in dollars`}
+            {...register(`chips.${index}.value`)}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Owned</span>
-          <Input type="number" inputMode="numeric" {...register(`chips.${index}.quantityOwned`)} />
+          <Input
+            type="number"
+            inputMode="numeric"
+            aria-label={`Chip ${index + 1} quantity owned`}
+            {...register(`chips.${index}.quantityOwned`)}
+          />
         </div>
       </div>
     </div>

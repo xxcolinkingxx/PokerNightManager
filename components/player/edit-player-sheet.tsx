@@ -148,6 +148,7 @@ export function EditPlayerSheet({ player, open, onOpenChange }: EditPlayerSheetP
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                aria-label="Player photo"
                 className="hidden"
                 onChange={(e) => void handleFileChange(e)}
               />

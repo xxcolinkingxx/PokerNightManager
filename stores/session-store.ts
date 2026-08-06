@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { playerRepository } from "@/lib/db/repositories/player-repository";
+import { triggerHaptic } from "@/lib/haptics";
 import { sessionService } from "@/lib/session/services/session-service";
 import { DEFAULT_BLIND_STRUCTURE } from "@/lib/session/constants";
 import type {
@@ -165,21 +166,25 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
 
   increaseBlind: async (sessionId) => {
     const liveState = await sessionService.increaseBlind(sessionId);
+    triggerHaptic("tap");
     set({ liveState });
   },
 
   addRebuy: async (sessionId, playerId, amount, method) => {
     const liveState = await sessionService.addRebuy(sessionId, playerId, amount, method);
+    triggerHaptic("tap");
     set({ liveState });
   },
 
   cashOutPlayer: async (sessionId, playerId, amount, method) => {
     const liveState = await sessionService.cashOutPlayer(sessionId, playerId, amount, method);
+    triggerHaptic("success");
     set({ liveState });
   },
 
   eliminatePlayer: async (sessionId, playerId) => {
     const liveState = await sessionService.eliminatePlayer(sessionId, playerId);
+    triggerHaptic("warning");
     set({ liveState });
   },
 
@@ -200,6 +205,7 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
 
   settlePayment: async (sessionId, playerId, amount, method) => {
     const liveState = await sessionService.settlePayment(sessionId, playerId, amount, method);
+    triggerHaptic("tap");
     set({ liveState });
   },
 
@@ -210,6 +216,7 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
 
   endSession: async (sessionId) => {
     await sessionService.endSession(sessionId);
+    triggerHaptic("success");
     set({ liveState: null, activeSession: null });
   },
 }));

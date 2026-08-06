@@ -242,6 +242,7 @@ export default function SettingsPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="application/json"
+                aria-label="Backup file"
                 className="hidden"
                 onChange={(e) => void handleFileSelected(e)}
               />
