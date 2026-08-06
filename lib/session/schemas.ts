@@ -35,3 +35,10 @@ export const wizardSchema = detailsStepSchema
   .merge(playersStepSchema);
 
 export type WizardSchemaValues = z.infer<typeof wizardSchema>;
+
+export type DetailsStepValues = z.infer<typeof detailsStepSchema>;
+export type GameTypeStepValues = z.infer<typeof gameTypeStepSchema>;
+export type StakesStepValues = z.infer<typeof stakesStepSchema>;
+export type ChipSetStepValues = z.infer<typeof chipSetStepSchema>;
+export type BlindsStepValues = z.infer<typeof blindsStepSchema>;
+export type PlayersStepValues = z.infer<typeof playersStepSchema>;

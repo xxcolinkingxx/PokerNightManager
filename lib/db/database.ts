@@ -29,9 +29,10 @@ export const db = new PokerNightDatabase();
 
 export async function initializeDatabase(): Promise<void> {
   const existing = await db.settings.get("default");
+  if (existing) return;
 
-  if (!existing) {
-    const now = new Date().toISOString();
+  const now = new Date().toISOString();
+  try {
     await db.settings.add({
       id: "default",
       hostName: "",
@@ -40,5 +41,12 @@ export async function initializeDatabase(): Promise<void> {
       createdAt: now,
       updatedAt: now,
     });
+  } catch (error) {
+    // Two callers can both pass the `existing` check before either commits
+    // (e.g. React effects double-invoking in dev) — the loser's add() races
+    // harmlessly against the winner's, so a duplicate-key error here just
+    // means the default row already exists, which is what we wanted anyway.
+    if (error instanceof Error && error.name === "ConstraintError") return;
+    throw error;
   }
 }
