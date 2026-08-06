@@ -5,6 +5,7 @@ import {
   Banknote,
   ChevronRight,
   Coins,
+  History,
   PauseCircle,
   PlayCircle,
   TrendingUp,
@@ -280,6 +281,27 @@ export default function LiveSessionPage() {
                   {formatCurrency(bankerSummary.expectedCash)} expected cash
                   {bankerSummary.outstanding.length > 0 &&
                     ` · ${bankerSummary.outstanding.length} outstanding`}
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => router.push(`/sessions/${sessionId}/timeline`)}
+          className="w-full text-left"
+        >
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <History className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Timeline</span>
+                <span className="text-xs text-muted-foreground">
+                  {events.length} events · replay the night
                 </span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />

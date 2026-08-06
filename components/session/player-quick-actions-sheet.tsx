@@ -20,6 +20,11 @@ import {
   formatCurrency,
   type PlayerSessionSummary,
 } from "@/lib/session/services/session-engine";
+import {
+  buildPlayerNameMap,
+  describeSessionEvent,
+  getEventPlayerId,
+} from "@/lib/session/services/timeline-engine";
 import type { PaymentMethod, Player, SessionEvent } from "@/lib/session/types";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
@@ -32,44 +37,17 @@ interface HistoryRow {
   timestamp: string;
 }
 
-function methodSuffix(method?: PaymentMethod): string {
-  return method ? ` (${PAYMENT_METHOD_LABEL[method]})` : "";
-}
-
 function buildPlayerHistory(playerId: string, events: SessionEvent[]): HistoryRow[] {
-  const rows: HistoryRow[] = [];
-  for (const event of events) {
-    if (event.type === "player_joined" && event.payload.playerId === playerId) {
-      rows.push({ id: event.id, label: "Joined the table", timestamp: event.timestamp });
-    } else if (event.type === "buy_in" && event.payload.playerId === playerId) {
-      rows.push({
-        id: event.id,
-        label: `Bought in for ${formatCurrency(event.payload.amount)}${methodSuffix(event.payload.method)}`,
-        timestamp: event.timestamp,
-      });
-    } else if (event.type === "rebuy" && event.payload.playerId === playerId) {
-      rows.push({
-        id: event.id,
-        label: `Rebought for ${formatCurrency(event.payload.amount)}${methodSuffix(event.payload.method)}`,
-        timestamp: event.timestamp,
-      });
-    } else if (event.type === "cash_out" && event.payload.playerId === playerId) {
-      rows.push({
-        id: event.id,
-        label: `Cashed out ${formatCurrency(event.payload.amount)}${methodSuffix(event.payload.method)}`,
-        timestamp: event.timestamp,
-      });
-    } else if (event.type === "dealer_changed" && event.payload.playerId === playerId) {
-      rows.push({ id: event.id, label: "Became dealer", timestamp: event.timestamp });
-    } else if (event.type === "payment_settled" && event.payload.playerId === playerId) {
-      rows.push({
-        id: event.id,
-        label: `Paid ${formatCurrency(event.payload.amount)} via ${PAYMENT_METHOD_LABEL[event.payload.method]}`,
-        timestamp: event.timestamp,
-      });
-    }
-  }
-  return rows;
+  const names = buildPlayerNameMap(events);
+  const playerName = (id: string) => names.get(id) ?? "Unknown";
+
+  return events
+    .filter((event) => getEventPlayerId(event) === playerId)
+    .map((event) => ({
+      id: event.id,
+      label: describeSessionEvent(event, playerName),
+      timestamp: event.timestamp,
+    }));
 }
 
 interface PlayerQuickActionsSheetProps {

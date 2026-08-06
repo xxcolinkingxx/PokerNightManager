@@ -1,4 +1,5 @@
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft, ChevronRight, History, Trophy } from "lucide-react";
+import Link from "next/link";
 
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { PageContainer } from "@/components/layout/page-container";
@@ -50,6 +51,21 @@ export function CompletedSessionSummary({
             <p className="text-sm text-muted-foreground">This session has ended.</p>
           </CardContent>
         </Card>
+
+        <Link href={`/sessions/${session.id}/timeline`}>
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <History className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Timeline</span>
+                <span className="text-xs text-muted-foreground">Replay the whole night</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </Link>
 
         <div className="flex flex-col gap-2">
           {players.map((player) => (
