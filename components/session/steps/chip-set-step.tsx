@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CHIP_SETS } from "@/lib/session/constants";
 import { chipSetStepSchema, type ChipSetStepValues } from "@/lib/session/schemas";
+import { useChipStore } from "@/stores/chip-store";
 import { useWizardStore } from "@/stores/session-store";
 
 import { WizardStepFooter } from "../wizard-step-footer";
@@ -16,6 +17,13 @@ export function ChipSetStep() {
   const data = useWizardStore((s) => s.data);
   const updateData = useWizardStore((s) => s.updateData);
   const setStep = useWizardStore((s) => s.setStep);
+
+  const chipSets = useChipStore((s) => s.chipSets);
+  const loadChipSets = useChipStore((s) => s.loadChipSets);
+
+  useEffect(() => {
+    void loadChipSets();
+  }, [loadChipSets]);
 
   const { control, handleSubmit } = useForm<ChipSetStepValues>({
     resolver: zodResolver(chipSetStepSchema),
@@ -27,6 +35,16 @@ export function ChipSetStep() {
     setStep("blinds");
   });
 
+  if (chipSets.length === 0) {
+    return (
+      <div className="flex flex-col gap-5">
+        <WizardStepHeader title="Chip Set" subtitle="Pick the chips you're playing with." />
+        <p className="text-sm text-muted-foreground">Loading chip sets...</p>
+        <WizardStepFooter onBack={() => setStep("stakes")} submitLabel="Continue" disabled />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <WizardStepHeader title="Chip Set" subtitle="Pick the chips you're playing with." />
@@ -36,7 +54,7 @@ export function ChipSetStep() {
         name="chipSetId"
         render={({ field }) => (
           <RadioGroup value={field.value} onValueChange={field.onChange}>
-            {CHIP_SETS.map((set) => (
+            {chipSets.map((set) => (
               <Label
                 key={set.id}
                 htmlFor={`chip-${set.id}`}

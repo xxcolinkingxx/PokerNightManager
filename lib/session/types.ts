@@ -5,6 +5,7 @@ export interface ChipDefinition {
   color: string;
   value: number;
   label: string;
+  quantityOwned: number;
 }
 
 export interface ChipSet {
@@ -12,6 +13,8 @@ export interface ChipSet {
   name: string;
   chips: ChipDefinition[];
   isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BlindLevel {

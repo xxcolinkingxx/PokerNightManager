@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { playerRepository } from "@/lib/db/repositories/player-repository";
 import { sessionService } from "@/lib/session/services/session-service";
-import { DEFAULT_BLIND_STRUCTURE, DEFAULT_CHIP_SET } from "@/lib/session/constants";
+import { DEFAULT_BLIND_STRUCTURE } from "@/lib/session/constants";
 import type {
   Player,
   Session,
@@ -18,7 +18,8 @@ const defaultWizardData: WizardFormData = {
   type: "cash",
   buyIn: 20,
   startingStack: 2000,
-  chipSetId: DEFAULT_CHIP_SET.id,
+  // Matches the fixed id the default chip set is seeded with in database.ts.
+  chipSetId: "default",
   blindStructureId: DEFAULT_BLIND_STRUCTURE.id,
   playerIds: [],
 };

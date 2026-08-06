@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Bell, MapPin, User } from "lucide-react";
+import { Bell, ChevronRight, Coins, MapPin, User } from "lucide-react";
+import Link from "next/link";
 
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { PageContainer } from "@/components/layout/page-container";
@@ -57,6 +58,23 @@ export default function SettingsPage() {
           title="Settings"
           subtitle="Configure your poker nights"
         />
+
+        <Link href="/settings/chips">
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <Coins className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Chip Sets</span>
+                <span className="text-xs text-muted-foreground">
+                  Inventory, calculator, and custom sets
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </Link>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <Card>
