@@ -205,11 +205,17 @@ describe("formatCurrency", () => {
     expect(formatCurrency(1234)).toBe("$1,234");
   });
 
-  it("rounds fractional amounts", () => {
-    expect(formatCurrency(75.5)).toBe("$76");
+  it("preserves cents instead of rounding them away", () => {
+    expect(formatCurrency(75.5)).toBe("$75.50");
+    expect(formatCurrency(0.33)).toBe("$0.33");
   });
 
-  it("formats negative amounts", () => {
+  it("doesn't show cents for a value that's a whole dollar amount up to floating-point dust", () => {
+    expect(formatCurrency(75.0000001)).toBe("$75");
+  });
+
+  it("formats negative amounts, cents included", () => {
     expect(formatCurrency(-40)).toBe("-$40");
+    expect(formatCurrency(-0.5)).toBe("-$0.50");
   });
 });
