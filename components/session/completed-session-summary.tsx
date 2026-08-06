@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronRight, History, Trophy } from "lucide-react";
+import { ArrowLeft, ChevronRight, HandCoins, History, Trophy } from "lucide-react";
 import Link from "next/link";
 
 import { AnimatedPage } from "@/components/shared/animated-page";
@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, getPlayerSummaries } from "@/lib/session/services/session-engine";
+import { computeSessionSettlement } from "@/lib/settlement/settlement-engine";
 import type { Session, SessionEvent } from "@/lib/session/types";
 
 interface CompletedSessionSummaryProps {
@@ -20,6 +21,7 @@ export function CompletedSessionSummary({
   onBack,
 }: CompletedSessionSummaryProps) {
   const players = getPlayerSummaries(events);
+  const settlementPlan = computeSessionSettlement(events);
 
   return (
     <PageContainer>
@@ -61,6 +63,25 @@ export function CompletedSessionSummary({
               <div className="flex flex-1 flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground">Timeline</span>
                 <span className="text-xs text-muted-foreground">Replay the whole night</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href={`/sessions/${session.id}/settle`}>
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <HandCoins className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Settle Up</span>
+                <span className="text-xs text-muted-foreground">
+                  {settlementPlan.transactions.length === 0
+                    ? "Who pays who"
+                    : `${settlementPlan.transactions.length} ${settlementPlan.transactions.length === 1 ? "payment" : "payments"} to settle`}
+                </span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardContent>

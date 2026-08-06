@@ -5,6 +5,7 @@ import {
   Banknote,
   ChevronRight,
   Coins,
+  HandCoins,
   History,
   PauseCircle,
   PlayCircle,
@@ -42,6 +43,7 @@ import {
   getCurrentDealer,
   getPlayerSummaries,
 } from "@/lib/session/services/session-engine";
+import { computeSessionSettlement } from "@/lib/settlement/settlement-engine";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
 
@@ -129,6 +131,7 @@ export default function LiveSessionPage() {
   const dealerPlayerId = getCurrentDealer(events);
   const cashedOutPlayers = players.filter((p) => p.isCashedOut);
   const bankerSummary = computeBankerSummary(events);
+  const settlementPlan = computeSessionSettlement(events);
 
   const selectedSummary = players.find((p) => p.playerId === selectedPlayerId) ?? null;
   const selectedPlayerRecord =
@@ -302,6 +305,29 @@ export default function LiveSessionPage() {
                 <span className="text-sm font-medium text-foreground">Timeline</span>
                 <span className="text-xs text-muted-foreground">
                   {events.length} events · replay the night
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => router.push(`/sessions/${sessionId}/settle`)}
+          className="w-full text-left"
+        >
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <HandCoins className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Settle Up</span>
+                <span className="text-xs text-muted-foreground">
+                  {settlementPlan.transactions.length === 0
+                    ? "Who pays who"
+                    : `${settlementPlan.transactions.length} ${settlementPlan.transactions.length === 1 ? "payment" : "payments"} to settle`}
                 </span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
