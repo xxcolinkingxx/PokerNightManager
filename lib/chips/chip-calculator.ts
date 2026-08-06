@@ -17,17 +17,35 @@ export function calculateChipDistribution(
   amount: number,
   chips: ChipDefinition[],
 ): ChipDistributionResult {
-  const sorted = [...chips].filter((chip) => chip.value > 0).sort((a, b) => b.value - a.value);
-  let remaining = Math.max(0, Math.round(amount));
-  const counts: ChipCount[] = [];
+  const descending = [...chips].filter((chip) => chip.value > 0).sort((a, b) => b.value - a.value);
+  const ascending = [...descending].sort((a, b) => a.value - b.value);
+  const total = Math.max(0, Math.round(amount));
+  let remaining = total;
+  const byValue = new Map<number, number>();
 
-  for (const chip of sorted) {
+  // Reserve one of each denomination, smallest first, as long as it still
+  // fits -- this is what makes the suggestion use a variety of chips
+  // instead of the fewest possible (which a pure largest-first greedy
+  // pass would produce, e.g. a single $50 for $50 owed).
+  for (const chip of ascending) {
+    if (chip.value <= remaining) {
+      byValue.set(chip.value, (byValue.get(chip.value) ?? 0) + 1);
+      remaining -= chip.value;
+    }
+  }
+
+  // Fill whatever is left with a standard largest-first greedy pass.
+  for (const chip of descending) {
     const count = Math.floor(remaining / chip.value);
     if (count > 0) {
-      counts.push({ chip, count });
+      byValue.set(chip.value, (byValue.get(chip.value) ?? 0) + count);
       remaining -= count * chip.value;
     }
   }
+
+  const counts: ChipCount[] = descending
+    .filter((chip) => (byValue.get(chip.value) ?? 0) > 0)
+    .map((chip) => ({ chip, count: byValue.get(chip.value)! }));
 
   return { counts, remainder: remaining };
 }
