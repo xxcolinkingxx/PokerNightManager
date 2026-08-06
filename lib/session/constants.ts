@@ -1,4 +1,20 @@
-import type { BlindStructure, ChipDefinition } from "./types";
+import type { BlindStructure, ChipDefinition, PaymentMethod } from "./types";
+
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  "cash",
+  "venmo",
+  "cash_app",
+  "apple_cash",
+  "zelle",
+];
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  cash: "Cash",
+  venmo: "Venmo",
+  cash_app: "Cash App",
+  apple_cash: "Apple Cash",
+  zelle: "Zelle",
+};
 
 // Seed denominations for the default chip set created on first run.
 // quantityOwned is deliberately not included here -- how many chips

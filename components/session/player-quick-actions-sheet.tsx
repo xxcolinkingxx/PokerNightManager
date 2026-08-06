@@ -15,18 +15,25 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { PAYMENT_METHOD_LABEL } from "@/lib/session/constants";
 import {
   formatCurrency,
   type PlayerSessionSummary,
 } from "@/lib/session/services/session-engine";
-import type { Player, SessionEvent } from "@/lib/session/types";
+import type { PaymentMethod, Player, SessionEvent } from "@/lib/session/types";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
+
+import { PaymentMethodPicker } from "./payment-method-picker";
 
 interface HistoryRow {
   id: string;
   label: string;
   timestamp: string;
+}
+
+function methodSuffix(method?: PaymentMethod): string {
+  return method ? ` (${PAYMENT_METHOD_LABEL[method]})` : "";
 }
 
 function buildPlayerHistory(playerId: string, events: SessionEvent[]): HistoryRow[] {
@@ -37,23 +44,29 @@ function buildPlayerHistory(playerId: string, events: SessionEvent[]): HistoryRo
     } else if (event.type === "buy_in" && event.payload.playerId === playerId) {
       rows.push({
         id: event.id,
-        label: `Bought in for ${formatCurrency(event.payload.amount)}`,
+        label: `Bought in for ${formatCurrency(event.payload.amount)}${methodSuffix(event.payload.method)}`,
         timestamp: event.timestamp,
       });
     } else if (event.type === "rebuy" && event.payload.playerId === playerId) {
       rows.push({
         id: event.id,
-        label: `Rebought for ${formatCurrency(event.payload.amount)}`,
+        label: `Rebought for ${formatCurrency(event.payload.amount)}${methodSuffix(event.payload.method)}`,
         timestamp: event.timestamp,
       });
     } else if (event.type === "cash_out" && event.payload.playerId === playerId) {
       rows.push({
         id: event.id,
-        label: `Cashed out ${formatCurrency(event.payload.amount)}`,
+        label: `Cashed out ${formatCurrency(event.payload.amount)}${methodSuffix(event.payload.method)}`,
         timestamp: event.timestamp,
       });
     } else if (event.type === "dealer_changed" && event.payload.playerId === playerId) {
       rows.push({ id: event.id, label: "Became dealer", timestamp: event.timestamp });
+    } else if (event.type === "payment_settled" && event.payload.playerId === playerId) {
+      rows.push({
+        id: event.id,
+        label: `Paid ${formatCurrency(event.payload.amount)} via ${PAYMENT_METHOD_LABEL[event.payload.method]}`,
+        timestamp: event.timestamp,
+      });
     }
   }
   return rows;
@@ -84,7 +97,9 @@ export function PlayerQuickActionsSheet({
   const updatePlayer = usePlayerStore((s) => s.updatePlayer);
 
   const [rebuyAmount, setRebuyAmount] = useState("");
+  const [rebuyMethod, setRebuyMethod] = useState<PaymentMethod>("cash");
   const [cashOutAmount, setCashOutAmount] = useState("");
+  const [cashOutMethod, setCashOutMethod] = useState<PaymentMethod>("cash");
   const [notes, setNotes] = useState(player.notes ?? "");
   const [isBusy, setIsBusy] = useState(false);
 
@@ -94,7 +109,9 @@ export function PlayerQuickActionsSheet({
     // effect body trips react-hooks/set-state-in-effect.
     const timeout = setTimeout(() => {
       setRebuyAmount("");
+      setRebuyMethod("cash");
       setCashOutAmount(String(summary.total));
+      setCashOutMethod("cash");
       setNotes(player.notes ?? "");
     }, 0);
     return () => clearTimeout(timeout);
@@ -104,7 +121,7 @@ export function PlayerQuickActionsSheet({
     const amount = Number(rebuyAmount);
     if (!amount || amount <= 0) return;
     setIsBusy(true);
-    await addRebuy(sessionId, player.id, amount);
+    await addRebuy(sessionId, player.id, amount, rebuyMethod);
     setRebuyAmount("");
     setIsBusy(false);
   }
@@ -113,7 +130,7 @@ export function PlayerQuickActionsSheet({
     const amount = Number(cashOutAmount);
     if (!amount && amount !== 0) return;
     setIsBusy(true);
-    await cashOutPlayer(sessionId, player.id, amount);
+    await cashOutPlayer(sessionId, player.id, amount, cashOutMethod);
     setIsBusy(false);
     onOpenChange(false);
   }
@@ -178,6 +195,7 @@ export function PlayerQuickActionsSheet({
                     Add
                   </Button>
                 </div>
+                <PaymentMethodPicker value={rebuyMethod} onChange={setRebuyMethod} />
               </div>
 
               <Separator />
@@ -202,6 +220,13 @@ export function PlayerQuickActionsSheet({
                     Cash Out
                   </Button>
                 </div>
+                <PaymentMethodPicker value={cashOutMethod} onChange={setCashOutMethod} />
+                {cashOutMethod !== "cash" && (
+                  <p className="text-xs text-muted-foreground">
+                    Recorded as owed via {PAYMENT_METHOD_LABEL[cashOutMethod]} until you mark it
+                    paid in Banker.
+                  </p>
+                )}
               </div>
 
               <Separator />

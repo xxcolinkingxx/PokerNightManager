@@ -3,6 +3,7 @@ import { sessionRepository } from "@/lib/db/repositories/session-repository";
 import { playerRepository } from "@/lib/db/repositories/player-repository";
 import { buildSessionState } from "@/lib/session/services/session-engine";
 import type {
+  PaymentMethod,
   Session,
   SessionState,
   WizardFormData,
@@ -52,6 +53,10 @@ export class SessionService {
       await sessionEventRepository.append(sessionId, "buy_in", {
         playerId: player.id,
         amount: session.buyIn,
+        // Buy-ins made while setting up the table are assumed cash --
+        // that's the overwhelmingly common way a home game actually
+        // starts. Anything paid differently gets tagged when it happens.
+        method: "cash",
       });
     }
 
@@ -106,8 +111,13 @@ export class SessionService {
     return this.getSessionState(sessionId);
   }
 
-  async addRebuy(sessionId: string, playerId: string, amount: number): Promise<SessionState> {
-    await sessionEventRepository.append(sessionId, "rebuy", { playerId, amount });
+  async addRebuy(
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "rebuy", { playerId, amount, method });
     return this.getSessionState(sessionId);
   }
 
@@ -115,8 +125,28 @@ export class SessionService {
     sessionId: string,
     playerId: string,
     amount: number,
+    method: PaymentMethod,
   ): Promise<SessionState> {
-    await sessionEventRepository.append(sessionId, "cash_out", { playerId, amount });
+    await sessionEventRepository.append(sessionId, "cash_out", { playerId, amount, method });
+    return this.getSessionState(sessionId);
+  }
+
+  async settlePayment(
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "payment_settled", {
+      playerId,
+      amount,
+      method,
+    });
+    return this.getSessionState(sessionId);
+  }
+
+  async recordCashCount(sessionId: string, amount: number): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "cash_recounted", { amount });
     return this.getSessionState(sessionId);
   }
 
@@ -129,6 +159,7 @@ export class SessionService {
     sessionId: string,
     playerId: string,
     buyInAmount: number,
+    method: PaymentMethod,
   ): Promise<SessionState> {
     const session = await sessionRepository.getById(sessionId);
     if (!session) throw new Error("Session not found");
@@ -149,6 +180,7 @@ export class SessionService {
     await sessionEventRepository.append(sessionId, "buy_in", {
       playerId: player.id,
       amount: buyInAmount,
+      method,
     });
 
     return this.getSessionState(sessionId);

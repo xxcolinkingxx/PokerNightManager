@@ -15,9 +15,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { PaymentMethod } from "@/lib/session/types";
 import { cn } from "@/lib/utils";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
+
+import { PaymentMethodPicker } from "./payment-method-picker";
 
 interface AddTablePlayerSheetProps {
   open: boolean;
@@ -42,6 +45,7 @@ export function AddTablePlayerSheet({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [buyIn, setBuyIn] = useState(String(defaultBuyIn));
+  const [method, setMethod] = useState<PaymentMethod>("cash");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -54,6 +58,7 @@ export function AddTablePlayerSheet({
       setSelectedId(null);
       setNewName("");
       setBuyIn(String(defaultBuyIn));
+      setMethod("cash");
     }, 0);
     return () => clearTimeout(timeout);
   }, [open, defaultBuyIn, loadPlayers]);
@@ -78,7 +83,7 @@ export function AddTablePlayerSheet({
     const amount = Number(buyIn);
     if (!amount || amount <= 0) return;
     setIsSubmitting(true);
-    await addPlayerToSession(sessionId, selectedId, amount);
+    await addPlayerToSession(sessionId, selectedId, amount, method);
     setIsSubmitting(false);
     onOpenChange(false);
   }
@@ -162,6 +167,7 @@ export function AddTablePlayerSheet({
               value={buyIn}
               onChange={(e) => setBuyIn(e.target.value)}
             />
+            <PaymentMethodPicker value={method} onChange={setMethod} />
           </div>
 
           <SheetFooter className="px-0 pb-0">

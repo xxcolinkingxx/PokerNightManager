@@ -70,6 +70,8 @@ export interface Session {
   updatedAt: string;
 }
 
+export type PaymentMethod = "cash" | "venmo" | "cash_app" | "apple_cash" | "zelle";
+
 export type SessionEventType =
   | "session_started"
   | "player_joined"
@@ -82,14 +84,20 @@ export type SessionEventType =
   | "break_started"
   | "break_ended"
   | "pot_updated"
-  | "game_ended";
+  | "game_ended"
+  | "payment_settled"
+  | "cash_recounted";
 
 export interface SessionEventPayloads {
   session_started: Record<string, never>;
   player_joined: { playerId: string; playerName: string };
-  buy_in: { playerId: string; amount: number };
-  rebuy: { playerId: string; amount: number };
-  cash_out: { playerId: string; amount: number };
+  // `method` is optional so sessions created before Banker Mode existed
+  // still deserialize fine -- their transactions just weren't tagged with
+  // a payment method, and Banker Mode treats that as genuinely unknown
+  // rather than assuming cash.
+  buy_in: { playerId: string; amount: number; method?: PaymentMethod };
+  rebuy: { playerId: string; amount: number; method?: PaymentMethod };
+  cash_out: { playerId: string; amount: number; method?: PaymentMethod };
   dealer_changed: { playerId: string };
   blind_increased: { level: number; smallBlind: number; bigBlind: number };
   player_left: { playerId: string };
@@ -97,6 +105,12 @@ export interface SessionEventPayloads {
   break_ended: Record<string, never>;
   pot_updated: { amount: number; action: "set" | "add" | "clear" };
   game_ended: Record<string, never>;
+  // Recorded when the host actually sends a previously-outstanding
+  // non-cash cash-out (e.g. finally Venmo-ing someone their winnings).
+  payment_settled: { playerId: string; amount: number; method: PaymentMethod };
+  // A manual physical cash count, for reconciling against the cash
+  // expected from tagged cash buy-ins/rebuys/cash-outs.
+  cash_recounted: { amount: number };
 }
 
 interface SessionEventBase<T extends SessionEventType> {

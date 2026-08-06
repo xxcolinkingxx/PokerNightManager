@@ -4,6 +4,7 @@ import { playerRepository } from "@/lib/db/repositories/player-repository";
 import { sessionService } from "@/lib/session/services/session-service";
 import { DEFAULT_BLIND_STRUCTURE } from "@/lib/session/constants";
 import type {
+  PaymentMethod,
   Player,
   Session,
   SessionState,
@@ -100,14 +101,32 @@ interface SessionStoreState {
   ) => Promise<void>;
   toggleBreak: (sessionId: string) => Promise<void>;
   increaseBlind: (sessionId: string) => Promise<void>;
-  addRebuy: (sessionId: string, playerId: string, amount: number) => Promise<void>;
-  cashOutPlayer: (sessionId: string, playerId: string, amount: number) => Promise<void>;
+  addRebuy: (
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
+  cashOutPlayer: (
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
   setDealer: (sessionId: string, playerId: string) => Promise<void>;
   addPlayerToSession: (
     sessionId: string,
     playerId: string,
     buyInAmount: number,
+    method: PaymentMethod,
   ) => Promise<void>;
+  settlePayment: (
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
+  recordCashCount: (sessionId: string, amount: number) => Promise<void>;
   endSession: (sessionId: string) => Promise<void>;
 }
 
@@ -148,13 +167,13 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
     set({ liveState });
   },
 
-  addRebuy: async (sessionId, playerId, amount) => {
-    const liveState = await sessionService.addRebuy(sessionId, playerId, amount);
+  addRebuy: async (sessionId, playerId, amount, method) => {
+    const liveState = await sessionService.addRebuy(sessionId, playerId, amount, method);
     set({ liveState });
   },
 
-  cashOutPlayer: async (sessionId, playerId, amount) => {
-    const liveState = await sessionService.cashOutPlayer(sessionId, playerId, amount);
+  cashOutPlayer: async (sessionId, playerId, amount, method) => {
+    const liveState = await sessionService.cashOutPlayer(sessionId, playerId, amount, method);
     set({ liveState });
   },
 
@@ -163,8 +182,23 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
     set({ liveState });
   },
 
-  addPlayerToSession: async (sessionId, playerId, buyInAmount) => {
-    const liveState = await sessionService.addPlayerToSession(sessionId, playerId, buyInAmount);
+  addPlayerToSession: async (sessionId, playerId, buyInAmount, method) => {
+    const liveState = await sessionService.addPlayerToSession(
+      sessionId,
+      playerId,
+      buyInAmount,
+      method,
+    );
+    set({ liveState });
+  },
+
+  settlePayment: async (sessionId, playerId, amount, method) => {
+    const liveState = await sessionService.settlePayment(sessionId, playerId, amount, method);
+    set({ liveState });
+  },
+
+  recordCashCount: async (sessionId, amount) => {
+    const liveState = await sessionService.recordCashCount(sessionId, amount);
     set({ liveState });
   },
 

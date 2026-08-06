@@ -1,6 +1,16 @@
 "use client";
 
-import { ArrowLeft, Coins, PauseCircle, PlayCircle, TrendingUp, UserPlus, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Banknote,
+  ChevronRight,
+  Coins,
+  PauseCircle,
+  PlayCircle,
+  TrendingUp,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -24,6 +34,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useSessionTimer } from "@/hooks/use-session-timer";
+import { computeBankerSummary } from "@/lib/banker/banker-engine";
 import { BLIND_STRUCTURES } from "@/lib/session/constants";
 import {
   formatCurrency,
@@ -116,6 +127,7 @@ export default function LiveSessionPage() {
   const players = getPlayerSummaries(events);
   const dealerPlayerId = getCurrentDealer(events);
   const cashedOutPlayers = players.filter((p) => p.isCashedOut);
+  const bankerSummary = computeBankerSummary(events);
 
   const selectedSummary = players.find((p) => p.playerId === selectedPlayerId) ?? null;
   const selectedPlayerRecord =
@@ -251,6 +263,29 @@ export default function LiveSessionPage() {
             </p>
           </CardContent>
         </Card>
+
+        <button
+          type="button"
+          onClick={() => router.push(`/sessions/${sessionId}/banker`)}
+          className="w-full text-left"
+        >
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <Banknote className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Banker</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatCurrency(bankerSummary.expectedCash)} expected cash
+                  {bankerSummary.outstanding.length > 0 &&
+                    ` · ${bankerSummary.outstanding.length} outstanding`}
+                </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </button>
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
