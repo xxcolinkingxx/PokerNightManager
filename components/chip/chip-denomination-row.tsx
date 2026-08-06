@@ -72,6 +72,7 @@ export function ChipDenominationRow({
           <Input
             type="number"
             inputMode="decimal"
+            step="any"
             aria-label={`Chip ${index + 1} value in dollars`}
             {...register(`chips.${index}.value`)}
           />

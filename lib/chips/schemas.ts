@@ -3,7 +3,7 @@ import { z } from "zod";
 export const chipDefinitionSchema = z.object({
   color: z.string().min(1),
   label: z.string().min(1, "Label is required").max(30),
-  value: z.coerce.number().min(1, "Must be at least $1"),
+  value: z.coerce.number().min(0.01, "Must be greater than $0"),
   quantityOwned: z.coerce.number().min(0, "Can't be negative"),
 });
 
