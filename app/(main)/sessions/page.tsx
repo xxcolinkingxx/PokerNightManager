@@ -12,8 +12,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Session } from "@/lib/session/types";
-import { useSessionStore } from "@/stores/session-store";
+import { formatCurrency } from "@/lib/session/services/session-engine";
+import type { Session, SessionTemplate } from "@/lib/session/types";
+import { useSessionTemplateStore } from "@/stores/session-template-store";
+import { useSessionStore, useWizardStore } from "@/stores/session-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 const STATUS_LABEL: Record<Session["status"], string> = {
   draft: "Draft",
@@ -26,17 +29,39 @@ export default function SessionsPage() {
   const router = useRouter();
   const sessions = useSessionStore((s) => s.sessions);
   const loadSessions = useSessionStore((s) => s.loadSessions);
+  const templates = useSessionTemplateStore((s) => s.templates);
+  const loadTemplates = useSessionTemplateStore((s) => s.loadTemplates);
+  const wizardReset = useWizardStore((s) => s.reset);
+  const loadFromTemplate = useWizardStore((s) => s.loadFromTemplate);
+  const settings = useSettingsStore((s) => s.settings);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
 
+  useEffect(() => {
+    void loadTemplates();
+  }, [loadTemplates]);
+
   const activeCount = sessions.filter((s) => s.status === "active").length;
   const scheduledCount = sessions.filter((s) => s.status === "draft").length;
 
   function handleCreated(session: Session) {
     router.push(`/sessions/${session.id}`);
+  }
+
+  function handleNewSession() {
+    wizardReset({
+      host: settings?.hostName || "",
+      location: settings?.defaultLocation || "",
+    });
+    setWizardOpen(true);
+  }
+
+  function handleQuickStart(template: SessionTemplate) {
+    loadFromTemplate(template);
+    setWizardOpen(true);
   }
 
   return (
@@ -46,12 +71,42 @@ export default function SessionsPage() {
           title="Sessions"
           subtitle="Manage your poker nights"
           action={
-            <Button size="sm" aria-label="Create new session" onClick={() => setWizardOpen(true)}>
+            <Button size="sm" aria-label="Create new session" onClick={handleNewSession}>
               <Plus className="h-4 w-4" />
               New
             </Button>
           }
         />
+
+        {templates.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-foreground">Quick Start</span>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {templates.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => handleQuickStart(template)}
+                  className="shrink-0"
+                >
+                  <Card>
+                    <CardContent className="flex w-40 flex-col gap-1 p-3.5 text-left">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {template.templateName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatCurrency(template.buyIn)} ·{" "}
+                        {template.playerIds.length === 1
+                          ? "1 player"
+                          : `${template.playerIds.length} players`}
+                      </span>
+                    </CardContent>
+                  </Card>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {sessions.length === 0 ? (
           <Card>
@@ -63,7 +118,7 @@ export default function SessionsPage() {
               <p className="max-w-xs text-sm text-muted-foreground">
                 Create a session to track buy-ins, rebuys, cash-outs, and more.
               </p>
-              <Button className="mt-2" onClick={() => setWizardOpen(true)}>
+              <Button className="mt-2" onClick={handleNewSession}>
                 <Plus className="h-4 w-4" />
                 Create Session
               </Button>

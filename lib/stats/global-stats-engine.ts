@@ -18,6 +18,10 @@ export interface GlobalStats {
   biggestPot: number;
   biggestPotSessionName: string | null;
   leaderboard: LeaderboardEntry[];
+  // Same entries as `leaderboard`, sorted by attendance instead of
+  // profit -- "who shows up" is its own leaderboard, especially useful
+  // over the "all time" window.
+  attendanceLeaderboard: LeaderboardEntry[];
 }
 
 function isWithinWindow(dateIso: string, window: StatsWindow, now: Date): boolean {
@@ -80,6 +84,10 @@ export function computeGlobalStats(
     .map(([playerId, agg]) => ({ playerId, ...agg }))
     .sort((a, b) => b.profit - a.profit);
 
+  const attendanceLeaderboard: LeaderboardEntry[] = [...leaderboard].sort(
+    (a, b) => b.sessionsPlayed - a.sessionsPlayed,
+  );
+
   return {
     sessionsCount: completed.length,
     totalBuyInVolume,
@@ -87,5 +95,6 @@ export function computeGlobalStats(
     biggestPot,
     biggestPotSessionName,
     leaderboard,
+    attendanceLeaderboard,
   };
 }

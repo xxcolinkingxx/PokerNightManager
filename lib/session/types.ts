@@ -164,6 +164,17 @@ export interface WizardFormData {
   playerIds: string[];
 }
 
+// A saved wizard configuration for one-tap "start from last time." Kept
+// distinct from `name` (the default session name it'll suggest) so the
+// template itself can have a stable label like "Friday Regulars" even
+// as the session name changes week to week.
+export interface SessionTemplate extends WizardFormData {
+  id: string;
+  templateName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type WizardStep =
   | "details"
   | "game-type"

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   Bell,
+  CalendarClock,
   ChevronRight,
   Coins,
   Download,
@@ -147,6 +148,21 @@ export default function SettingsPage() {
                 <span className="text-xs text-muted-foreground">
                   Inventory, calculator, and custom sets
                 </span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/settings/templates">
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10">
+                <CalendarClock className="h-5 w-5 text-gold" aria-hidden="true" />
+              </div>
+              <div className="flex flex-1 flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">Session Templates</span>
+                <span className="text-xs text-muted-foreground">Saved setups for quick start</span>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardContent>

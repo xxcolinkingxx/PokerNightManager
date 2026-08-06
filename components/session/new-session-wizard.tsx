@@ -5,7 +5,6 @@ import { useEffect } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { WIZARD_STEPS } from "@/lib/session/constants";
 import type { Session } from "@/lib/session/types";
-import { useSettingsStore } from "@/stores/settings-store";
 import { useWizardStore } from "@/stores/session-store";
 
 import { BlindsStep } from "./steps/blinds-step";
@@ -25,17 +24,15 @@ interface NewSessionWizardProps {
 
 export function NewSessionWizard({ open, onOpenChange, onCreated }: NewSessionWizardProps) {
   const step = useWizardStore((s) => s.step);
-  const reset = useWizardStore((s) => s.reset);
-  const settings = useSettingsStore((s) => s.settings);
+  const loadPlayers = useWizardStore((s) => s.loadPlayers);
 
+  // Resetting (or loading a template) is the opener's job -- see the
+  // Sessions page's "New" and "Quick Start" handlers -- so this only
+  // needs to make sure the player list is fresh, regardless of which
+  // step the wizard is opened onto.
   useEffect(() => {
-    if (open) {
-      reset({
-        host: settings?.hostName || "",
-        location: settings?.defaultLocation || "",
-      });
-    }
-  }, [open, reset, settings?.hostName, settings?.defaultLocation]);
+    if (open) void loadPlayers();
+  }, [open, loadPlayers]);
 
   const currentIndex = Math.max(
     0,

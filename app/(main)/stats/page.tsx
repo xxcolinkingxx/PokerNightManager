@@ -22,12 +22,20 @@ const WINDOWS: Array<{ value: StatsWindow; label: string }> = [
   { value: "all", label: "All Time" },
 ];
 
+type LeaderboardMode = "profit" | "attendance";
+
+const LEADERBOARD_MODES: Array<{ value: LeaderboardMode; label: string }> = [
+  { value: "profit", label: "Profit" },
+  { value: "attendance", label: "Attendance" },
+];
+
 export default function StatsPage() {
   const playerRecords = usePlayerStore((s) => s.players);
   const loadPlayers = usePlayerStore((s) => s.loadPlayers);
 
   const [data, setData] = useState<SessionWithEvents[] | null>(null);
   const [statsWindow, setStatsWindow] = useState<StatsWindow>("all");
+  const [leaderboardMode, setLeaderboardMode] = useState<LeaderboardMode>("profit");
 
   useEffect(() => {
     void loadPlayers();
@@ -95,6 +103,19 @@ export default function StatsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Leaderboard</CardTitle>
+            <div className="flex gap-2 pt-1">
+              {LEADERBOARD_MODES.map((m) => (
+                <Button
+                  key={m.value}
+                  type="button"
+                  size="sm"
+                  variant={leaderboardMode === m.value ? "default" : "secondary"}
+                  onClick={() => setLeaderboardMode(m.value)}
+                >
+                  {m.label}
+                </Button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent>
             {stats.leaderboard.length === 0 ? (
@@ -108,7 +129,13 @@ export default function StatsPage() {
                 </p>
               </div>
             ) : (
-              <LeaderboardChart entries={stats.leaderboard} playerRecords={playerRecords} />
+              <LeaderboardChart
+                entries={
+                  leaderboardMode === "profit" ? stats.leaderboard : stats.attendanceLeaderboard
+                }
+                playerRecords={playerRecords}
+                mode={leaderboardMode}
+              />
             )}
           </CardContent>
         </Card>

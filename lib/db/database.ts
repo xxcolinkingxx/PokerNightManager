@@ -2,7 +2,13 @@ import Dexie, { type EntityTable } from "dexie";
 
 import type { AppSettings } from "./types";
 import { DEFAULT_CHIP_DENOMINATIONS } from "@/lib/session/constants";
-import type { ChipSet, Player, Session, SessionEvent } from "@/lib/session/types";
+import type {
+  ChipSet,
+  Player,
+  Session,
+  SessionEvent,
+  SessionTemplate,
+} from "@/lib/session/types";
 
 class PokerNightDatabase extends Dexie {
   settings!: EntityTable<AppSettings, "id">;
@@ -10,6 +16,7 @@ class PokerNightDatabase extends Dexie {
   sessions!: EntityTable<Session, "id">;
   sessionEvents!: EntityTable<SessionEvent, "id">;
   chipSets!: EntityTable<ChipSet, "id">;
+  sessionTemplates!: EntityTable<SessionTemplate, "id">;
 
   constructor() {
     super("PokerNightManager");
@@ -31,6 +38,15 @@ class PokerNightDatabase extends Dexie {
       sessions: "id, status, createdAt, updatedAt",
       sessionEvents: "id, sessionId, sequence, timestamp, type",
       chipSets: "id, name, isDefault, updatedAt",
+    });
+
+    this.version(4).stores({
+      settings: "id",
+      players: "id, name, updatedAt",
+      sessions: "id, status, createdAt, updatedAt",
+      sessionEvents: "id, sessionId, sequence, timestamp, type",
+      chipSets: "id, name, isDefault, updatedAt",
+      sessionTemplates: "id, templateName, updatedAt",
     });
   }
 }

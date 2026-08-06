@@ -1,9 +1,15 @@
 import { db } from "@/lib/db/database";
 import type { AppSettings } from "@/lib/db/types";
-import type { ChipSet, Player, Session, SessionEvent } from "@/lib/session/types";
+import type {
+  ChipSet,
+  Player,
+  Session,
+  SessionEvent,
+  SessionTemplate,
+} from "@/lib/session/types";
 
 const BACKUP_APP_ID = "PokerNightManager";
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 // Player.avatar is a Blob, which isn't JSON-serializable -- swap it for a
 // data URL on the way out and back for a round trip through plain JSON.
@@ -11,7 +17,7 @@ type SerializedPlayer = Omit<Player, "avatar"> & { avatar?: string };
 
 export interface BackupFile {
   app: typeof BACKUP_APP_ID;
-  version: typeof BACKUP_VERSION;
+  version: number;
   exportedAt: string;
   data: {
     settings: AppSettings[];
@@ -19,6 +25,8 @@ export interface BackupFile {
     sessions: Session[];
     sessionEvents: SessionEvent[];
     chipSets: ChipSet[];
+    // Absent in backups made before session templates existed (version 1).
+    sessionTemplates?: SessionTemplate[];
   };
 }
 
@@ -37,13 +45,15 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
 }
 
 export async function exportBackup(): Promise<Blob> {
-  const [settings, players, sessions, sessionEvents, chipSets] = await Promise.all([
-    db.settings.toArray(),
-    db.players.toArray(),
-    db.sessions.toArray(),
-    db.sessionEvents.toArray(),
-    db.chipSets.toArray(),
-  ]);
+  const [settings, players, sessions, sessionEvents, chipSets, sessionTemplates] =
+    await Promise.all([
+      db.settings.toArray(),
+      db.players.toArray(),
+      db.sessions.toArray(),
+      db.sessionEvents.toArray(),
+      db.chipSets.toArray(),
+      db.sessionTemplates.toArray(),
+    ]);
 
   const serializedPlayers: SerializedPlayer[] = await Promise.all(
     players.map(async (player) => ({
@@ -56,7 +66,14 @@ export async function exportBackup(): Promise<Blob> {
     app: BACKUP_APP_ID,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    data: { settings, players: serializedPlayers, sessions, sessionEvents, chipSets },
+    data: {
+      settings,
+      players: serializedPlayers,
+      sessions,
+      sessionEvents,
+      chipSets,
+      sessionTemplates,
+    },
   };
 
   return new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -105,10 +122,11 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
       avatar: player.avatar ? await dataUrlToBlob(player.avatar) : undefined,
     })),
   );
+  const sessionTemplates = backup.data.sessionTemplates ?? [];
 
   await db.transaction(
     "rw",
-    [db.settings, db.players, db.sessions, db.sessionEvents, db.chipSets],
+    [db.settings, db.players, db.sessions, db.sessionEvents, db.chipSets, db.sessionTemplates],
     async () => {
       await Promise.all([
         db.settings.clear(),
@@ -116,6 +134,7 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
         db.sessions.clear(),
         db.sessionEvents.clear(),
         db.chipSets.clear(),
+        db.sessionTemplates.clear(),
       ]);
       await Promise.all([
         db.settings.bulkAdd(backup.data.settings),
@@ -123,6 +142,7 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
         db.sessions.bulkAdd(backup.data.sessions),
         db.sessionEvents.bulkAdd(backup.data.sessionEvents),
         db.chipSets.bulkAdd(backup.data.chipSets),
+        db.sessionTemplates.bulkAdd(sessionTemplates),
       ]);
     },
   );

@@ -9,10 +9,11 @@ import { PlayerAvatar } from "@/components/player/player-avatar";
 import { PlayerContactCard } from "@/components/player/player-contact-card";
 import { PlayerHistoryList } from "@/components/player/player-history-list";
 import { PlayerStatsGrid } from "@/components/player/player-stats-grid";
+import { YearlyAttendanceChart } from "@/components/player/yearly-attendance-chart";
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -140,6 +141,17 @@ export default function PlayerProfilePage() {
         </header>
 
         {stats && <PlayerStatsGrid stats={stats} />}
+
+        {stats && stats.attendanceByYear.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Attendance by Year</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <YearlyAttendanceChart data={stats.attendanceByYear} />
+            </CardContent>
+          </Card>
+        )}
 
         <PlayerContactCard player={player} />
 

@@ -18,12 +18,21 @@ export interface PlayerSessionHistoryEntry {
   profit: number | null;
 }
 
+export interface YearlyAttendance {
+  year: number;
+  count: number;
+}
+
 export interface PlayerStats {
   sessionsPlayed: number;
   totalBuyIn: number;
   averageBuyIn: number;
   favoriteGameType: SessionType | null;
   history: PlayerSessionHistoryEntry[];
+  // Sessions played per calendar year, oldest first. Attendance is
+  // knowable regardless of a session's status or realized result, so
+  // this counts every session in `history`, not just completed ones.
+  attendanceByYear: YearlyAttendance[];
   // Everything below is derived from completed sessions only, so an
   // in-progress game's unrealized numbers never leak into lifetime totals.
   completedSessionsCount: number;
@@ -88,12 +97,22 @@ export function computePlayerStats(
     }
   }
 
+  const yearCounts = new Map<number, number>();
+  for (const entry of history) {
+    const year = new Date(entry.date).getFullYear();
+    yearCounts.set(year, (yearCounts.get(year) ?? 0) + 1);
+  }
+  const attendanceByYear: YearlyAttendance[] = [...yearCounts.entries()]
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => a.year - b.year);
+
   return {
     sessionsPlayed: history.length,
     totalBuyIn,
     averageBuyIn: history.length > 0 ? totalBuyIn / history.length : 0,
     favoriteGameType,
     history,
+    attendanceByYear,
     completedSessionsCount,
     profit,
     roi: realizedBuyIn > 0 ? profit / realizedBuyIn : null,

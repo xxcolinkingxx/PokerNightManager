@@ -4,9 +4,12 @@ import { AlertCircle, MapPin, Users } from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/session/services/session-engine";
 import type { Session } from "@/lib/session/types";
+import { useSessionTemplateStore } from "@/stores/session-template-store";
 import { useWizardStore } from "@/stores/session-store";
 
 import { WizardStepFooter } from "../wizard-step-footer";
@@ -21,9 +24,12 @@ export function SummaryStep({ onDone }: SummaryStepProps) {
   const players = useWizardStore((s) => s.players);
   const setStep = useWizardStore((s) => s.setStep);
   const createAndStart = useWizardStore((s) => s.createAndStart);
+  const saveTemplate = useSessionTemplateStore((s) => s.saveTemplate);
 
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState(data.name);
 
   const selectedPlayers = players.filter((p) => data.playerIds.includes(p.id));
 
@@ -31,6 +37,9 @@ export function SummaryStep({ onDone }: SummaryStepProps) {
     setIsStarting(true);
     setError(null);
     try {
+      if (saveAsTemplate && templateName.trim()) {
+        await saveTemplate(templateName.trim(), data);
+      }
       const session = await createAndStart();
       onDone(session);
     } catch (err) {
@@ -81,6 +90,34 @@ export function SummaryStep({ onDone }: SummaryStepProps) {
             </Badge>
           ))}
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+        <label className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">Save as Template</span>
+            <span className="text-xs text-muted-foreground">
+              Quick-start this same setup next time
+            </span>
+          </div>
+          <input
+            type="checkbox"
+            className="h-5 w-5 shrink-0 rounded accent-gold"
+            checked={saveAsTemplate}
+            onChange={(e) => setSaveAsTemplate(e.target.checked)}
+          />
+        </label>
+        {saveAsTemplate && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="template-name">Template Name</Label>
+            <Input
+              id="template-name"
+              placeholder="Friday Regulars"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {error && (

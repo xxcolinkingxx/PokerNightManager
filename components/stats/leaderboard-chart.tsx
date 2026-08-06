@@ -12,17 +12,31 @@ import { cn } from "@/lib/utils";
 interface LeaderboardChartProps {
   entries: LeaderboardEntry[];
   playerRecords: Player[];
+  // "profit" (default): signed dollar amounts, red/green by sign.
+  // "attendance": unsigned session counts, always gold.
+  mode?: "profit" | "attendance";
 }
 
-export function LeaderboardChart({ entries, playerRecords }: LeaderboardChartProps) {
+export function LeaderboardChart({
+  entries,
+  playerRecords,
+  mode = "profit",
+}: LeaderboardChartProps) {
   const avatarById = new Map(playerRecords.map((p) => [p.id, p.avatar]));
-  const maxAbsProfit = Math.max(1, ...entries.map((entry) => Math.abs(entry.profit)));
+  const value = (entry: LeaderboardEntry) =>
+    mode === "profit" ? entry.profit : entry.sessionsPlayed;
+  const maxAbsValue = Math.max(1, ...entries.map((entry) => Math.abs(value(entry))));
 
   return (
     <div className="flex flex-col gap-4">
       {entries.map((entry) => {
-        const widthPct = (Math.abs(entry.profit) / maxAbsProfit) * 100;
-        const isPositive = entry.profit >= 0;
+        const entryValue = value(entry);
+        const widthPct = (Math.abs(entryValue) / maxAbsValue) * 100;
+        const isPositive = entryValue >= 0;
+        const barColor =
+          mode === "profit" ? (isPositive ? "bg-success" : "bg-danger") : "bg-gold";
+        const textColor =
+          mode === "profit" ? (isPositive ? "text-success" : "text-danger") : "text-gold";
 
         return (
           <div key={entry.playerId} className="flex flex-col gap-1.5">
@@ -35,14 +49,10 @@ export function LeaderboardChart({ entries, playerRecords }: LeaderboardChartPro
                 />
                 <span className="text-sm font-medium text-foreground">{entry.playerName}</span>
               </div>
-              <span
-                className={cn(
-                  "text-sm font-semibold",
-                  isPositive ? "text-success" : "text-danger",
-                )}
-              >
-                {isPositive ? "+" : ""}
-                {formatCurrency(entry.profit)}
+              <span className={cn("text-sm font-semibold", textColor)}>
+                {mode === "profit"
+                  ? `${isPositive ? "+" : ""}${formatCurrency(entryValue)}`
+                  : `${entryValue} ${entryValue === 1 ? "session" : "sessions"}`}
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
@@ -50,7 +60,7 @@ export function LeaderboardChart({ entries, playerRecords }: LeaderboardChartPro
                 initial={{ width: 0 }}
                 animate={{ width: `${widthPct}%` }}
                 transition={animation.ease}
-                className={cn("h-full rounded-full", isPositive ? "bg-success" : "bg-danger")}
+                className={cn("h-full rounded-full", barColor)}
               />
             </div>
           </div>

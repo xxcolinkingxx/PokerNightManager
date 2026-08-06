@@ -9,6 +9,7 @@ import type {
   Player,
   Session,
   SessionState,
+  SessionTemplate,
   WizardFormData,
   WizardStep,
 } from "@/lib/session/types";
@@ -37,6 +38,7 @@ interface WizardState {
   addPlayer: (name: string) => Promise<Player>;
   togglePlayer: (playerId: string) => void;
   reset: (defaults?: Partial<WizardFormData>) => void;
+  loadFromTemplate: (template: SessionTemplate) => void;
   createAndStart: () => Promise<Session>;
 }
 
@@ -78,6 +80,21 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       data: { ...defaultWizardData, ...defaults },
       isLoading: false,
     }),
+
+  loadFromTemplate: (template) => {
+    const data: WizardFormData = {
+      name: template.name,
+      host: template.host,
+      location: template.location,
+      type: template.type,
+      buyIn: template.buyIn,
+      startingStack: template.startingStack,
+      chipSetId: template.chipSetId,
+      blindStructureId: template.blindStructureId,
+      playerIds: template.playerIds,
+    };
+    set({ step: "summary", data, isLoading: false });
+  },
 
   createAndStart: async () => {
     const { data } = get();
