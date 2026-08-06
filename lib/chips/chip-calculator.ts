@@ -13,6 +13,12 @@ export interface ChipDistributionResult {
   remainder: number;
 }
 
+// How many of the two smallest denominations ("whites and reds" in the
+// default set) a suggestion will pile on beyond their baseline reserve --
+// real racks lean heavily on the small chips for change-making, so these
+// should noticeably outnumber the bigger denominations.
+const PREFERRED_DENOMINATION_CAPS = [8, 5];
+
 export function calculateChipDistribution(
   amount: number,
   chips: ChipDefinition[],
@@ -33,6 +39,18 @@ export function calculateChipDistribution(
       remaining -= chip.value;
     }
   }
+
+  // Top up the smallest one or two denominations beyond their single
+  // reserved chip, up to a cap, before anything else gets more.
+  ascending.slice(0, PREFERRED_DENOMINATION_CAPS.length).forEach((chip, index) => {
+    const cap = PREFERRED_DENOMINATION_CAPS[index];
+    const already = byValue.get(chip.value) ?? 0;
+    const additional = Math.min(cap - already, Math.floor(remaining / chip.value));
+    if (additional > 0) {
+      byValue.set(chip.value, already + additional);
+      remaining -= additional * chip.value;
+    }
+  });
 
   // Fill whatever is left with a standard largest-first greedy pass.
   for (const chip of descending) {
