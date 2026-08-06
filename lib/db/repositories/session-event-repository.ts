@@ -1,5 +1,9 @@
 import { db } from "../database";
-import type { SessionEvent, SessionEventType } from "@/lib/session/types";
+import type {
+  SessionEvent,
+  SessionEventPayloads,
+  SessionEventType,
+} from "@/lib/session/types";
 import { generateId } from "@/lib/session/services/session-engine";
 
 export class SessionEventRepository {
@@ -19,16 +23,19 @@ export class SessionEventRepository {
   async append<T extends SessionEventType>(
     sessionId: string,
     type: T,
-    payload: SessionEvent[T]["payload"],
+    payload: SessionEventPayloads[T],
   ): Promise<SessionEvent<T>> {
-    const event: SessionEvent<T> = {
+    // `type` and `payload` are correlated via T, but TypeScript can't prove
+    // that correlation against the distributed SessionEvent<T> union at a
+    // generic construction site — this cast is sound by the signature above.
+    const event = {
       id: generateId(),
       sessionId,
       type,
       payload,
       timestamp: new Date().toISOString(),
       sequence: await this.getNextSequence(sessionId),
-    };
+    } as SessionEvent<T>;
     await db.sessionEvents.add(event);
     return event;
   }

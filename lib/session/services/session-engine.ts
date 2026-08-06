@@ -96,6 +96,62 @@ export function getCurrentBlindLevel(
   return current;
 }
 
+// Elapsed time within the *current* blind level -- anchored to the most
+// recent blind_increased event (or session start, if still on level 1),
+// with break time subtracted the same way computeElapsedMs does for the
+// whole session.
+export function computeBlindLevelElapsedMs(
+  events: SessionEvent[],
+  now: Date = new Date(),
+): number {
+  const started = events.find((e) => e.type === "session_started");
+  if (!started) return 0;
+
+  let anchor = new Date(started.timestamp).getTime();
+  for (const event of events) {
+    if (event.type === "blind_increased") {
+      anchor = new Date(event.timestamp).getTime();
+    }
+  }
+
+  let elapsed = now.getTime() - anchor;
+  let breakStart: number | null = null;
+
+  for (const event of events) {
+    const time = new Date(event.timestamp).getTime();
+    if (time < anchor) continue;
+    if (event.type === "break_started") {
+      breakStart = time;
+    } else if (event.type === "break_ended" && breakStart !== null) {
+      elapsed -= time - breakStart;
+      breakStart = null;
+    }
+  }
+
+  if (breakStart !== null) {
+    elapsed -= now.getTime() - breakStart;
+  }
+
+  return Math.max(0, elapsed);
+}
+
+// Milliseconds left in the current blind level, or null once the
+// structure has no further levels to time toward (final level).
+export function computeBlindLevelRemainingMs(
+  events: SessionEvent[],
+  blindStructureId: string,
+  now: Date = new Date(),
+): number | null {
+  const structure = BLIND_STRUCTURES.find((s) => s.id === blindStructureId);
+  const current = getCurrentBlindLevel(events, blindStructureId);
+  const hasNextLevel = structure?.levels.some((l) => l.level === current.level + 1) ?? false;
+  if (!hasNextLevel) return null;
+
+  const durationMs = current.durationMinutes * 60_000;
+  const elapsed = computeBlindLevelElapsedMs(events, now);
+  return Math.max(0, durationMs - elapsed);
+}
+
 export function buildSessionState(
   session: Session,
   events: SessionEvent[],
@@ -111,6 +167,11 @@ export function buildSessionState(
       events,
       session.blindStructureId,
     ).level,
+    blindLevelRemainingMs: computeBlindLevelRemainingMs(
+      events,
+      session.blindStructureId,
+      now,
+    ),
   };
 }
 
@@ -133,4 +194,108 @@ export function formatCurrency(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+export interface PlayerSessionSummary {
+  playerId: string;
+  playerName: string;
+  // Net money still "on the table" -- (buyInTotal + rebuys) - cashOutTotal.
+  // Doubles as a live stack proxy; goes negative once someone cashes out
+  // for more than they put in.
+  total: number;
+  buyInTotal: number;
+  cashOutTotal: number;
+  seat: number;
+  isCashedOut: boolean;
+  // Tournament-only: set once a player_eliminated event fires for them.
+  isEliminated: boolean;
+  finishPosition: number | null;
+}
+
+export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary[] {
+  const order: string[] = [];
+  const names = new Map<string, string>();
+  const buyInTotals = new Map<string, number>();
+  const cashOutTotals = new Map<string, number>();
+  const cashedOut = new Set<string>();
+  const finishPositions = new Map<string, number>();
+
+  for (const event of events) {
+    if (event.type === "player_joined") {
+      const { playerId, playerName } = event.payload;
+      if (!names.has(playerId)) order.push(playerId);
+      names.set(playerId, playerName);
+      if (!buyInTotals.has(playerId)) buyInTotals.set(playerId, 0);
+    } else if (event.type === "buy_in" || event.type === "rebuy") {
+      const { playerId, amount } = event.payload;
+      buyInTotals.set(playerId, (buyInTotals.get(playerId) ?? 0) + amount);
+    } else if (event.type === "cash_out") {
+      const { playerId, amount } = event.payload;
+      cashOutTotals.set(playerId, (cashOutTotals.get(playerId) ?? 0) + amount);
+      cashedOut.add(playerId);
+    } else if (event.type === "player_eliminated") {
+      finishPositions.set(event.payload.playerId, event.payload.position);
+    }
+  }
+
+  return order.map((playerId, index) => {
+    const buyInTotal = buyInTotals.get(playerId) ?? 0;
+    const cashOutTotal = cashOutTotals.get(playerId) ?? 0;
+    return {
+      playerId,
+      playerName: names.get(playerId) ?? "Unknown",
+      total: buyInTotal - cashOutTotal,
+      buyInTotal,
+      cashOutTotal,
+      // Seats are a pure display computation (join order), not stored
+      // state -- deliberately, so this can be removed later without a
+      // data migration.
+      seat: index + 1,
+      isCashedOut: cashedOut.has(playerId),
+      isEliminated: finishPositions.has(playerId),
+      finishPosition: finishPositions.get(playerId) ?? null,
+    };
+  });
+}
+
+export function computePeakPot(events: SessionEvent[]): number {
+  let pot = 0;
+  let peak = 0;
+
+  for (const event of events) {
+    if (event.type === "pot_updated") {
+      const { action, amount } = event.payload;
+      if (action === "set") pot = amount;
+      else if (action === "add") pot += amount;
+      else if (action === "clear") pot = 0;
+      peak = Math.max(peak, pot);
+    }
+  }
+
+  return peak;
+}
+
+export function ordinal(n: number): string {
+  const remainder100 = n % 100;
+  if (remainder100 >= 11 && remainder100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+export function getCurrentDealer(events: SessionEvent[]): string | null {
+  let dealerId: string | null = null;
+  for (const event of events) {
+    if (event.type === "dealer_changed") {
+      dealerId = event.payload.playerId;
+    }
+  }
+  return dealerId;
 }

@@ -1,10 +1,10 @@
 import { sessionEventRepository } from "@/lib/db/repositories/session-event-repository";
 import { sessionRepository } from "@/lib/db/repositories/session-repository";
 import { playerRepository } from "@/lib/db/repositories/player-repository";
-import { buildSessionState } from "@/lib/session/services/session-engine";
+import { buildSessionState, getPlayerSummaries } from "@/lib/session/services/session-engine";
 import type {
+  PaymentMethod,
   Session,
-  SessionEvent,
   SessionState,
   WizardFormData,
 } from "@/lib/session/types";
@@ -53,6 +53,10 @@ export class SessionService {
       await sessionEventRepository.append(sessionId, "buy_in", {
         playerId: player.id,
         amount: session.buyIn,
+        // Buy-ins made while setting up the table are assumed cash --
+        // that's the overwhelmingly common way a home game actually
+        // starts. Anything paid differently gets tagged when it happens.
+        method: "cash",
       });
     }
 
@@ -104,6 +108,94 @@ export class SessionService {
       smallBlind: nextLevel.smallBlind,
       bigBlind: nextLevel.bigBlind,
     });
+    return this.getSessionState(sessionId);
+  }
+
+  async addRebuy(
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "rebuy", { playerId, amount, method });
+    return this.getSessionState(sessionId);
+  }
+
+  async cashOutPlayer(
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "cash_out", { playerId, amount, method });
+    return this.getSessionState(sessionId);
+  }
+
+  async eliminatePlayer(sessionId: string, playerId: string): Promise<SessionState> {
+    const state = await this.getSessionState(sessionId);
+    const activeCount = getPlayerSummaries(state.events).filter(
+      (s) => !s.isEliminated && !s.isCashedOut,
+    ).length;
+
+    await sessionEventRepository.append(sessionId, "player_eliminated", {
+      playerId,
+      position: activeCount,
+    });
+    return this.getSessionState(sessionId);
+  }
+
+  async settlePayment(
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "payment_settled", {
+      playerId,
+      amount,
+      method,
+    });
+    return this.getSessionState(sessionId);
+  }
+
+  async recordCashCount(sessionId: string, amount: number): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "cash_recounted", { amount });
+    return this.getSessionState(sessionId);
+  }
+
+  async setDealer(sessionId: string, playerId: string): Promise<SessionState> {
+    await sessionEventRepository.append(sessionId, "dealer_changed", { playerId });
+    return this.getSessionState(sessionId);
+  }
+
+  async addPlayerToSession(
+    sessionId: string,
+    playerId: string,
+    buyInAmount: number,
+    method: PaymentMethod,
+  ): Promise<SessionState> {
+    const session = await sessionRepository.getById(sessionId);
+    if (!session) throw new Error("Session not found");
+
+    const player = await playerRepository.getById(playerId);
+    if (!player) throw new Error("Player not found");
+
+    if (!session.playerIds.includes(playerId)) {
+      await sessionRepository.update(sessionId, {
+        playerIds: [...session.playerIds, playerId],
+      });
+    }
+
+    await sessionEventRepository.append(sessionId, "player_joined", {
+      playerId: player.id,
+      playerName: player.nickname || player.name,
+    });
+    await sessionEventRepository.append(sessionId, "buy_in", {
+      playerId: player.id,
+      amount: buyInAmount,
+      method,
+    });
+
     return this.getSessionState(sessionId);
   }
 

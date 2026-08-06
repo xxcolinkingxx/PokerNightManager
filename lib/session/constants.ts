@@ -1,17 +1,47 @@
-import type { BlindStructure, ChipSet } from "./types";
+import type { BlindStructure, ChipDefinition, PaymentMethod } from "./types";
 
-export const DEFAULT_CHIP_SET: ChipSet = {
-  id: "default",
-  name: "Standard Set",
-  isDefault: true,
-  chips: [
-    { color: "#F5F5F5", value: 1, label: "White" },
-    { color: "#E74C3C", value: 5, label: "Red" },
-    { color: "#2ECC71", value: 25, label: "Green" },
-    { color: "#3498DB", value: 50, label: "Blue" },
-    { color: "#090909", value: 100, label: "Black" },
-  ],
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  "cash",
+  "venmo",
+  "cash_app",
+  "apple_cash",
+  "zelle",
+];
+
+export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  cash: "Cash",
+  venmo: "Venmo",
+  cash_app: "Cash App",
+  apple_cash: "Apple Cash",
+  zelle: "Zelle",
 };
+
+// Seed denominations for the default chip set created on first run.
+// quantityOwned is deliberately not included here -- how many chips
+// someone actually owns is never a default, it's set in the chip
+// set editor.
+export const DEFAULT_CHIP_DENOMINATIONS: Array<Omit<ChipDefinition, "quantityOwned">> = [
+  { color: "#F5F5F5", value: 1, label: "White" },
+  { color: "#E74C3C", value: 5, label: "Red" },
+  { color: "#2ECC71", value: 25, label: "Green" },
+  { color: "#3498DB", value: 50, label: "Blue" },
+  { color: "#090909", value: 100, label: "Black" },
+];
+
+// A palette of common physical poker chip colors, offered as quick-pick
+// swatches when editing a chip set's denominations.
+export const CHIP_COLOR_PALETTE: string[] = [
+  "#F5F5F5",
+  "#E74C3C",
+  "#2ECC71",
+  "#3498DB",
+  "#090909",
+  "#9B59B6",
+  "#F1C40F",
+  "#E67E22",
+  "#EC407A",
+  "#1ABC9C",
+];
 
 export const DEFAULT_BLIND_STRUCTURE: BlindStructure = {
   id: "default",
@@ -27,8 +57,6 @@ export const DEFAULT_BLIND_STRUCTURE: BlindStructure = {
     { level: 7, smallBlind: 25, bigBlind: 50, ante: 0, durationMinutes: 20 },
   ],
 };
-
-export const CHIP_SETS: ChipSet[] = [DEFAULT_CHIP_SET];
 
 export const BLIND_STRUCTURES: BlindStructure[] = [DEFAULT_BLIND_STRUCTURE];
 

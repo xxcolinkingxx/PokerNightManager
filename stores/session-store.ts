@@ -1,12 +1,15 @@
 import { create } from "zustand";
 
 import { playerRepository } from "@/lib/db/repositories/player-repository";
+import { triggerHaptic } from "@/lib/haptics";
 import { sessionService } from "@/lib/session/services/session-service";
-import { DEFAULT_BLIND_STRUCTURE, DEFAULT_CHIP_SET } from "@/lib/session/constants";
+import { DEFAULT_BLIND_STRUCTURE } from "@/lib/session/constants";
 import type {
+  PaymentMethod,
   Player,
   Session,
   SessionState,
+  SessionTemplate,
   WizardFormData,
   WizardStep,
 } from "@/lib/session/types";
@@ -18,7 +21,8 @@ const defaultWizardData: WizardFormData = {
   type: "cash",
   buyIn: 20,
   startingStack: 2000,
-  chipSetId: DEFAULT_CHIP_SET.id,
+  // Matches the fixed id the default chip set is seeded with in database.ts.
+  chipSetId: "default",
   blindStructureId: DEFAULT_BLIND_STRUCTURE.id,
   playerIds: [],
 };
@@ -34,6 +38,7 @@ interface WizardState {
   addPlayer: (name: string) => Promise<Player>;
   togglePlayer: (playerId: string) => void;
   reset: (defaults?: Partial<WizardFormData>) => void;
+  loadFromTemplate: (template: SessionTemplate) => void;
   createAndStart: () => Promise<Session>;
 }
 
@@ -76,6 +81,21 @@ export const useWizardStore = create<WizardState>((set, get) => ({
       isLoading: false,
     }),
 
+  loadFromTemplate: (template) => {
+    const data: WizardFormData = {
+      name: template.name,
+      host: template.host,
+      location: template.location,
+      type: template.type,
+      buyIn: template.buyIn,
+      startingStack: template.startingStack,
+      chipSetId: template.chipSetId,
+      blindStructureId: template.blindStructureId,
+      playerIds: template.playerIds,
+    };
+    set({ step: "summary", data, isLoading: false });
+  },
+
   createAndStart: async () => {
     const { data } = get();
     const session = await sessionService.createSession(data);
@@ -99,6 +119,33 @@ interface SessionStoreState {
   ) => Promise<void>;
   toggleBreak: (sessionId: string) => Promise<void>;
   increaseBlind: (sessionId: string) => Promise<void>;
+  addRebuy: (
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
+  cashOutPlayer: (
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
+  eliminatePlayer: (sessionId: string, playerId: string) => Promise<void>;
+  setDealer: (sessionId: string, playerId: string) => Promise<void>;
+  addPlayerToSession: (
+    sessionId: string,
+    playerId: string,
+    buyInAmount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
+  settlePayment: (
+    sessionId: string,
+    playerId: string,
+    amount: number,
+    method: PaymentMethod,
+  ) => Promise<void>;
+  recordCashCount: (sessionId: string, amount: number) => Promise<void>;
   endSession: (sessionId: string) => Promise<void>;
 }
 
@@ -136,11 +183,57 @@ export const useSessionStore = create<SessionStoreState>((set) => ({
 
   increaseBlind: async (sessionId) => {
     const liveState = await sessionService.increaseBlind(sessionId);
+    triggerHaptic("tap");
+    set({ liveState });
+  },
+
+  addRebuy: async (sessionId, playerId, amount, method) => {
+    const liveState = await sessionService.addRebuy(sessionId, playerId, amount, method);
+    triggerHaptic("tap");
+    set({ liveState });
+  },
+
+  cashOutPlayer: async (sessionId, playerId, amount, method) => {
+    const liveState = await sessionService.cashOutPlayer(sessionId, playerId, amount, method);
+    triggerHaptic("success");
+    set({ liveState });
+  },
+
+  eliminatePlayer: async (sessionId, playerId) => {
+    const liveState = await sessionService.eliminatePlayer(sessionId, playerId);
+    triggerHaptic("warning");
+    set({ liveState });
+  },
+
+  setDealer: async (sessionId, playerId) => {
+    const liveState = await sessionService.setDealer(sessionId, playerId);
+    set({ liveState });
+  },
+
+  addPlayerToSession: async (sessionId, playerId, buyInAmount, method) => {
+    const liveState = await sessionService.addPlayerToSession(
+      sessionId,
+      playerId,
+      buyInAmount,
+      method,
+    );
+    set({ liveState });
+  },
+
+  settlePayment: async (sessionId, playerId, amount, method) => {
+    const liveState = await sessionService.settlePayment(sessionId, playerId, amount, method);
+    triggerHaptic("tap");
+    set({ liveState });
+  },
+
+  recordCashCount: async (sessionId, amount) => {
+    const liveState = await sessionService.recordCashCount(sessionId, amount);
     set({ liveState });
   },
 
   endSession: async (sessionId) => {
     await sessionService.endSession(sessionId);
+    triggerHaptic("success");
     set({ liveState: null, activeSession: null });
   },
 }));

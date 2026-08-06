@@ -1,5 +1,6 @@
 "use client";
 
+import { MotionConfig } from "framer-motion";
 import { useEffect } from "react";
 
 import { initializeDatabase } from "@/lib/db/database";
@@ -35,9 +36,9 @@ export function AppProviders({ children }: AppProvidersProps) {
   }, [setDbReady, loadSettings]);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <ServiceWorkerRegister />
       {children}
-    </>
+    </MotionConfig>
   );
 }
