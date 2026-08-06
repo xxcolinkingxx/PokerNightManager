@@ -1,5 +1,6 @@
-import { computePeakPot, getPlayerSummaries } from "@/lib/session/services/session-engine";
+import { computePeakPot } from "@/lib/session/services/session-engine";
 import type { SessionWithEvents } from "@/lib/session/types";
+import { computeRealizedProfits } from "@/lib/stats/realized-profit";
 
 export type StatsWindow = "month" | "year" | "all";
 
@@ -58,11 +59,17 @@ export function computeGlobalStats(
       biggestPotSessionName = session.name;
     }
 
-    for (const summary of getPlayerSummaries(events)) {
-      const existing = playerAgg.get(summary.playerId);
-      const sessionProfit = summary.cashOutTotal - summary.buyInTotal;
-      playerAgg.set(summary.playerId, {
-        playerName: summary.playerName,
+    for (const { playerId, playerName, profit: sessionProfit } of computeRealizedProfits(
+      session,
+      events,
+    )) {
+      // Unresolved tournament (marked completed without every player's
+      // finish being recorded) -- don't guess, just leave it out.
+      if (sessionProfit === null) continue;
+
+      const existing = playerAgg.get(playerId);
+      playerAgg.set(playerId, {
+        playerName,
         profit: (existing?.profit ?? 0) + sessionProfit,
         sessionsPlayed: (existing?.sessionsPlayed ?? 0) + 1,
       });

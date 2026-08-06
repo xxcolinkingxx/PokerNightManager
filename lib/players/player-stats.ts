@@ -1,5 +1,6 @@
 import { getPlayerSummaries } from "@/lib/session/services/session-engine";
 import type { Session, SessionType, SessionWithEvents } from "@/lib/session/types";
+import { computeRealizedProfitForPlayer } from "@/lib/stats/realized-profit";
 
 export interface PlayerSessionHistoryEntry {
   sessionId: string;
@@ -8,10 +9,13 @@ export interface PlayerSessionHistoryEntry {
   status: Session["status"];
   buyInTotal: number;
   cashOutTotal: number;
-  // cashOutTotal - buyInTotal. Only meaningful once status is "completed" --
-  // for a session still in progress this just reflects money currently
-  // committed to the table, not a realized result.
-  profit: number;
+  // For an in-progress session this is cashOutTotal - buyInTotal, i.e.
+  // money currently committed to the table, not a realized result. Once
+  // completed, this is the actual realized profit (tournament-aware --
+  // see computeRealizedProfitForPlayer) -- null if a completed
+  // tournament never recorded this player's finish, so there's nothing
+  // honest to show.
+  profit: number | null;
 }
 
 export interface PlayerStats {
@@ -49,7 +53,11 @@ export function computePlayerStats(
     totalBuyIn += summary.buyInTotal;
     gameTypeCounts.set(session.type, (gameTypeCounts.get(session.type) ?? 0) + 1);
 
-    const sessionProfit = summary.cashOutTotal - summary.buyInTotal;
+    const isCompleted = session.status === "completed";
+    const sessionProfit = isCompleted
+      ? computeRealizedProfitForPlayer(session, events, playerId)
+      : summary.cashOutTotal - summary.buyInTotal;
+
     history.push({
       sessionId: session.id,
       sessionName: session.name,
@@ -60,7 +68,7 @@ export function computePlayerStats(
       profit: sessionProfit,
     });
 
-    if (session.status === "completed") {
+    if (isCompleted && sessionProfit !== null) {
       completedSessionsCount += 1;
       realizedBuyIn += summary.buyInTotal;
       profit += sessionProfit;
