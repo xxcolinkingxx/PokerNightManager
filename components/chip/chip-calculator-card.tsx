@@ -38,14 +38,26 @@ export function ChipCalculatorCard({ chips }: ChipCalculatorCardProps) {
     setState({ amount: numericAmount, counts: suggest(sorted, numericAmount) });
   }
 
+  // Auto-balance: nudging one chip's count re-suggests every other
+  // denomination so the total keeps matching the amount, instead of just
+  // reporting how far off it drifted.
   function adjust(value: number, delta: number) {
-    setState((prev) => ({
-      ...prev,
-      counts: {
-        ...prev.counts,
-        [value]: Math.max(0, (prev.counts[value] ?? 0) + delta),
-      },
-    }));
+    setState((prev) => {
+      const touchedChip = sorted.find((chip) => chip.value === value);
+      if (!touchedChip) return prev;
+
+      const newCount = Math.max(0, (prev.counts[value] ?? 0) + delta);
+      const touchedTotal = touchedChip.value * newCount;
+      const remainderTarget = Math.max(0, numericAmount - touchedTotal);
+      const otherChips = sorted.filter((chip) => chip.value !== value);
+      const { counts: rebalanced } = calculateChipDistribution(remainderTarget, otherChips);
+
+      const counts: Record<number, number> = { [value]: newCount };
+      for (const { chip, count } of rebalanced) {
+        counts[chip.value] = count;
+      }
+      return { ...prev, counts };
+    });
   }
 
   function handleReset() {
