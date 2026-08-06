@@ -1,10 +1,16 @@
-import { ArrowLeft, ChevronRight, HandCoins, History, Trophy } from "lucide-react";
+"use client";
+
+import { ArrowLeft, ChevronRight, HandCoins, History, Share2, Trophy } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { AnimatedPage } from "@/components/shared/animated-page";
 import { PageContainer } from "@/components/layout/page-container";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { buildResultsCardData } from "@/lib/session/services/results-card-data";
+import { renderResultsCardImage, shareOrDownloadImage } from "@/lib/session/services/results-card-image";
 import { formatCurrency, getPlayerSummaries, ordinal } from "@/lib/session/services/session-engine";
 import { computeSessionSettlement } from "@/lib/settlement/settlement-engine";
 import { computeTournamentSummary } from "@/lib/tournament/tournament-engine";
@@ -25,6 +31,18 @@ export function CompletedSessionSummary({
   const players = getPlayerSummaries(events);
   const settlementPlan = computeSessionSettlement(events);
   const tournamentSummary = computeTournamentSummary(events);
+  const [isSharing, setIsSharing] = useState(false);
+
+  async function handleShare() {
+    setIsSharing(true);
+    try {
+      const data = buildResultsCardData(session, events);
+      const blob = await renderResultsCardImage(data);
+      await shareOrDownloadImage(blob, `${session.name} Results.png`, `${session.name} Results`);
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   return (
     <PageContainer>
@@ -54,6 +72,15 @@ export function CompletedSessionSummary({
             </div>
             <h2 className="text-lg font-semibold">Game Over</h2>
             <p className="text-sm text-muted-foreground">This session has ended.</p>
+            <Button
+              variant="secondary"
+              className="mt-2"
+              onClick={() => void handleShare()}
+              disabled={isSharing}
+            >
+              <Share2 className="h-4 w-4" />
+              {isSharing ? "Preparing..." : "Share Results"}
+            </Button>
           </CardContent>
         </Card>
 
