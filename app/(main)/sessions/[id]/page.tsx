@@ -39,7 +39,6 @@ import {
 import { useBlindTimer } from "@/hooks/use-blind-timer";
 import { useSessionTimer } from "@/hooks/use-session-timer";
 import { computeBankerSummary } from "@/lib/banker/banker-engine";
-import { BLIND_STRUCTURES } from "@/lib/session/constants";
 import {
   formatCurrency,
   getCurrentDealer,
@@ -48,6 +47,7 @@ import {
 } from "@/lib/session/services/session-engine";
 import { computeSessionSettlement } from "@/lib/settlement/settlement-engine";
 import { computeTournamentSummary } from "@/lib/tournament/tournament-engine";
+import { useBlindStructureStore } from "@/stores/blind-structure-store";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSessionStore } from "@/stores/session-store";
 
@@ -65,6 +65,9 @@ export default function LiveSessionPage() {
 
   const playerRecords = usePlayerStore((s) => s.players);
   const loadPlayerRecords = usePlayerStore((s) => s.loadPlayers);
+
+  const blindStructures = useBlindStructureStore((s) => s.blindStructures);
+  const loadBlindStructures = useBlindStructureStore((s) => s.loadBlindStructures);
 
   const [potInput, setPotInput] = useState("");
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
@@ -86,6 +89,10 @@ export default function LiveSessionPage() {
   useEffect(() => {
     void loadPlayerRecords();
   }, [loadPlayerRecords]);
+
+  useEffect(() => {
+    void loadBlindStructures();
+  }, [loadBlindStructures]);
 
   const timerDisplay = useSessionTimer(liveState);
   const blindTimer = useBlindTimer(liveState);
@@ -139,7 +146,7 @@ export default function LiveSessionPage() {
     );
   }
 
-  const structure = BLIND_STRUCTURES.find((s) => s.id === session.blindStructureId);
+  const structure = blindStructures.find((s) => s.id === session.blindStructureId);
   const blindLevel = structure?.levels.find((l) => l.level === currentBlindLevel);
   const nextBlindLevel = structure?.levels.find((l) => l.level === currentBlindLevel + 1);
   const players = getPlayerSummaries(events);

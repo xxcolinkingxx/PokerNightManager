@@ -1,4 +1,5 @@
 import { db } from "@/lib/db/database";
+import { blindStructureRepository } from "@/lib/db/repositories/blind-structure-repository";
 import { sessionEventRepository } from "@/lib/db/repositories/session-event-repository";
 import { sessionRepository } from "@/lib/db/repositories/session-repository";
 import { playerRepository } from "@/lib/db/repositories/player-repository";
@@ -68,8 +69,11 @@ export class SessionService {
     const session = await sessionRepository.getById(sessionId);
     if (!session) throw new Error("Session not found");
 
-    const events = await sessionEventRepository.getBySessionId(sessionId);
-    return buildSessionState(session, events);
+    const [events, structures] = await Promise.all([
+      sessionEventRepository.getBySessionId(sessionId),
+      blindStructureRepository.getAll(),
+    ]);
+    return buildSessionState(session, events, structures);
   }
 
   async updatePot(
@@ -93,10 +97,8 @@ export class SessionService {
 
   async increaseBlind(sessionId: string): Promise<SessionState> {
     const state = await this.getSessionState(sessionId);
-    const { BLIND_STRUCTURES } = await import("@/lib/session/constants");
-    const structure = BLIND_STRUCTURES.find(
-      (s) => s.id === state.session.blindStructureId,
-    );
+    const structures = await blindStructureRepository.getAll();
+    const structure = structures.find((s) => s.id === state.session.blindStructureId);
     if (!structure) throw new Error("Blind structure not found");
 
     const nextLevel = structure.levels.find(

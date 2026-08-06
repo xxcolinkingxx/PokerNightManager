@@ -1,17 +1,31 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  computeBlindLevelRemainingMs,
   computeElapsedMs,
   computePeakPot,
   computePot,
   formatCurrency,
   formatElapsedTime,
+  getCurrentBlindLevel,
   getCurrentDealer,
   getPlayerSummaries,
   isOnBreak,
   ordinal,
 } from "./session-engine";
 import { buyIn, cashOut, makeEvent, playerJoined, rebuy, resetEventSequence } from "@/lib/testing/fixtures";
+import type { BlindStructure } from "@/lib/session/types";
+
+const TEST_STRUCTURE: BlindStructure = {
+  id: "test-structure",
+  name: "Test Structure",
+  isDefault: false,
+  levels: [
+    { level: 1, smallBlind: 0.25, bigBlind: 0.5, ante: 0, durationMinutes: 20 },
+    { level: 2, smallBlind: 0.5, bigBlind: 1, ante: 0, durationMinutes: 20 },
+    { level: 3, smallBlind: 1, bigBlind: 2, ante: 0, durationMinutes: 20 },
+  ],
+};
 
 beforeEach(() => {
   resetEventSequence();
@@ -165,6 +179,51 @@ describe("getCurrentDealer", () => {
 
   it("returns null when no dealer has been set", () => {
     expect(getCurrentDealer([])).toBeNull();
+  });
+});
+
+describe("getCurrentBlindLevel", () => {
+  it("starts at level 1 of the chosen structure", () => {
+    const level = getCurrentBlindLevel([], "test-structure", [TEST_STRUCTURE]);
+    expect(level).toEqual(TEST_STRUCTURE.levels[0]);
+  });
+
+  it("advances to the most recent blind_increased level", () => {
+    const events = [
+      makeEvent("blind_increased", { level: 2, smallBlind: 0.5, bigBlind: 1 }),
+    ];
+    const level = getCurrentBlindLevel(events, "test-structure", [TEST_STRUCTURE]);
+    expect(level.level).toBe(2);
+  });
+
+  it("falls back to a sane default when the structure isn't found", () => {
+    const level = getCurrentBlindLevel([], "missing-id", [TEST_STRUCTURE]);
+    expect(level).toEqual({ level: 1, smallBlind: 1, bigBlind: 2, ante: 0, durationMinutes: 20 });
+  });
+
+  it("supports sub-dollar blind values", () => {
+    const level = getCurrentBlindLevel([], "test-structure", [TEST_STRUCTURE]);
+    expect(level.smallBlind).toBe(0.25);
+    expect(level.bigBlind).toBe(0.5);
+  });
+});
+
+describe("computeBlindLevelRemainingMs", () => {
+  it("returns null once there's no further level to count down to", () => {
+    const events = [
+      makeEvent("session_started", {}),
+      makeEvent("blind_increased", { level: 3, smallBlind: 1, bigBlind: 2 }),
+    ];
+    const remaining = computeBlindLevelRemainingMs(events, "test-structure", [TEST_STRUCTURE]);
+    expect(remaining).toBeNull();
+  });
+
+  it("counts down within the current level", () => {
+    const start = new Date(2026, 0, 1, 19, 0, 0);
+    const now = new Date(2026, 0, 1, 19, 5, 0); // 5 minutes into a 20-minute level
+    const events = [makeEvent("session_started", {}, { timestamp: start.toISOString() })];
+    const remaining = computeBlindLevelRemainingMs(events, "test-structure", [TEST_STRUCTURE], now);
+    expect(remaining).toBe(15 * 60_000);
   });
 });
 

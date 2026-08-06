@@ -1,8 +1,13 @@
 import Dexie, { type EntityTable } from "dexie";
 
 import type { AppSettings } from "./types";
-import { DEFAULT_CHIP_DENOMINATIONS } from "@/lib/session/constants";
+import {
+  DEFAULT_BLIND_STRUCTURE,
+  DEFAULT_CHIP_DENOMINATIONS,
+  MICRO_STAKES_BLIND_STRUCTURE,
+} from "@/lib/session/constants";
 import type {
+  BlindStructure,
   ChipSet,
   Player,
   Session,
@@ -17,6 +22,7 @@ class PokerNightDatabase extends Dexie {
   sessionEvents!: EntityTable<SessionEvent, "id">;
   chipSets!: EntityTable<ChipSet, "id">;
   sessionTemplates!: EntityTable<SessionTemplate, "id">;
+  blindStructures!: EntityTable<BlindStructure, "id">;
 
   constructor() {
     super("PokerNightManager");
@@ -48,13 +54,27 @@ class PokerNightDatabase extends Dexie {
       chipSets: "id, name, isDefault, updatedAt",
       sessionTemplates: "id, templateName, updatedAt",
     });
+
+    this.version(5).stores({
+      settings: "id",
+      players: "id, name, updatedAt",
+      sessions: "id, status, createdAt, updatedAt",
+      sessionEvents: "id, sessionId, sequence, timestamp, type",
+      chipSets: "id, name, isDefault, updatedAt",
+      sessionTemplates: "id, templateName, updatedAt",
+      blindStructures: "id, name",
+    });
   }
 }
 
 export const db = new PokerNightDatabase();
 
 export async function initializeDatabase(): Promise<void> {
-  await Promise.all([seedDefaultSettings(), seedDefaultChipSet()]);
+  await Promise.all([
+    seedDefaultSettings(),
+    seedDefaultChipSet(),
+    seedDefaultBlindStructures(),
+  ]);
 }
 
 async function seedDefaultSettings(): Promise<void> {
@@ -95,6 +115,22 @@ async function seedDefaultChipSet(): Promise<void> {
       createdAt: now,
       updatedAt: now,
     });
+  } catch (error) {
+    if (error instanceof Error && error.name === "ConstraintError") return;
+    throw error;
+  }
+}
+
+async function seedDefaultBlindStructures(): Promise<void> {
+  const existing = await db.blindStructures.get("default");
+  if (existing) return;
+
+  // Individual add()s (not bulkAdd) so a losing racer's catch sees a plain
+  // ConstraintError -- bulkAdd wraps failures in a Dexie BulkError instead,
+  // which this same catch wouldn't recognize.
+  try {
+    await db.blindStructures.add(DEFAULT_BLIND_STRUCTURE);
+    await db.blindStructures.add(MICRO_STAKES_BLIND_STRUCTURE);
   } catch (error) {
     if (error instanceof Error && error.name === "ConstraintError") return;
     throw error;

@@ -1,6 +1,6 @@
-import { BLIND_STRUCTURES } from "../constants";
 import type {
   BlindLevel,
+  BlindStructure,
   Session,
   SessionEvent,
   SessionState,
@@ -72,8 +72,9 @@ export function isOnBreak(events: SessionEvent[]): boolean {
 export function getCurrentBlindLevel(
   events: SessionEvent[],
   blindStructureId: string,
+  structures: BlindStructure[],
 ): BlindLevel {
-  const structure = BLIND_STRUCTURES.find((s) => s.id === blindStructureId);
+  const structure = structures.find((s) => s.id === blindStructureId);
   const defaultLevel = structure?.levels[0] ?? {
     level: 1,
     smallBlind: 1,
@@ -140,10 +141,11 @@ export function computeBlindLevelElapsedMs(
 export function computeBlindLevelRemainingMs(
   events: SessionEvent[],
   blindStructureId: string,
+  structures: BlindStructure[],
   now: Date = new Date(),
 ): number | null {
-  const structure = BLIND_STRUCTURES.find((s) => s.id === blindStructureId);
-  const current = getCurrentBlindLevel(events, blindStructureId);
+  const structure = structures.find((s) => s.id === blindStructureId);
+  const current = getCurrentBlindLevel(events, blindStructureId, structures);
   const hasNextLevel = structure?.levels.some((l) => l.level === current.level + 1) ?? false;
   if (!hasNextLevel) return null;
 
@@ -155,6 +157,7 @@ export function computeBlindLevelRemainingMs(
 export function buildSessionState(
   session: Session,
   events: SessionEvent[],
+  structures: BlindStructure[],
   now: Date = new Date(),
 ): SessionState {
   return {
@@ -166,10 +169,12 @@ export function buildSessionState(
     currentBlindLevel: getCurrentBlindLevel(
       events,
       session.blindStructureId,
+      structures,
     ).level,
     blindLevelRemainingMs: computeBlindLevelRemainingMs(
       events,
       session.blindStructureId,
+      structures,
       now,
     ),
   };
