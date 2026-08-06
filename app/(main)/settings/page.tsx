@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Bell, ChevronRight, Coins, MapPin, User } from "lucide-react";
+import {
+  Bell,
+  ChevronRight,
+  Coins,
+  Download,
+  MapPin,
+  TriangleAlert,
+  Upload,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 
 import { AnimatedPage } from "@/components/shared/animated-page";
@@ -15,6 +24,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { exportBackup, parseBackupFile, restoreBackup, type BackupFile } from "@/lib/backup/backup-service";
 import { useSettingsStore } from "@/stores/settings-store";
 
 const settingsSchema = z.object({
@@ -25,8 +43,19 @@ const settingsSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 
+type BackupStatus =
+  | { state: "idle" }
+  | { state: "exporting" }
+  | { state: "exported" }
+  | { state: "restoring" }
+  | { state: "error"; message: string };
+
 export default function SettingsPage() {
   const { settings, isLoading, updateSettings } = useSettingsStore();
+
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>({ state: "idle" });
+  const [pendingRestore, setPendingRestore] = useState<BackupFile | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -50,6 +79,54 @@ export default function SettingsPage() {
   const onSubmit = form.handleSubmit(async (values) => {
     await updateSettings(values);
   });
+
+  async function handleExport() {
+    setBackupStatus({ state: "exporting" });
+    try {
+      const blob = await exportBackup();
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0, 10);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `poker-night-manager-backup-${stamp}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setBackupStatus({ state: "exported" });
+    } catch {
+      setBackupStatus({ state: "error", message: "Couldn't export your data. Try again." });
+    }
+  }
+
+  async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const backup = await parseBackupFile(file);
+      setPendingRestore(backup);
+    } catch (error) {
+      setBackupStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : "Couldn't read that file.",
+      });
+    }
+  }
+
+  async function handleConfirmRestore() {
+    if (!pendingRestore) return;
+    setBackupStatus({ state: "restoring" });
+    try {
+      await restoreBackup(pendingRestore);
+      setPendingRestore(null);
+      window.location.reload();
+    } catch {
+      setPendingRestore(null);
+      setBackupStatus({ state: "error", message: "Restore failed. Your data wasn't changed." });
+    }
+  }
 
   return (
     <PageContainer>
@@ -132,6 +209,55 @@ export default function SettingsPage() {
           </Card>
 
           <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Download className="h-4 w-4 text-gold" aria-hidden="true" />
+                Backup &amp; Restore
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground">
+                Export everything -- players, sessions, chip sets -- as a single file you can
+                keep somewhere safe or move to a new device.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handleExport()}
+                disabled={backupStatus.state === "exporting"}
+              >
+                <Download className="h-4 w-4" />
+                {backupStatus.state === "exporting" ? "Exporting..." : "Export Data"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={backupStatus.state === "restoring"}
+              >
+                <Upload className="h-4 w-4" />
+                {backupStatus.state === "restoring" ? "Restoring..." : "Restore from Backup"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={(e) => void handleFileSelected(e)}
+              />
+              {backupStatus.state === "exported" && (
+                <p className="text-xs text-success">Backup downloaded.</p>
+              )}
+              {backupStatus.state === "error" && (
+                <p className="flex items-center gap-1.5 text-xs text-danger">
+                  <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {backupStatus.message}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
@@ -149,6 +275,33 @@ export default function SettingsPage() {
           </Button>
         </form>
       </AnimatedPage>
+
+      <Sheet
+        open={pendingRestore !== null}
+        onOpenChange={(open) => !open && setPendingRestore(null)}
+      >
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Restore from backup?</SheetTitle>
+            <SheetDescription>
+              This replaces everything currently on this device -- players, sessions, chip
+              sets, and settings -- with the contents of this backup
+              {pendingRestore
+                ? ` from ${new Date(pendingRestore.exportedAt).toLocaleDateString()}`
+                : ""}
+              . This can&apos;t be undone.
+            </SheetDescription>
+          </SheetHeader>
+          <SheetFooter>
+            <Button variant="secondary" onClick={() => setPendingRestore(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => void handleConfirmRestore()}>
+              Restore
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </PageContainer>
   );
 }
