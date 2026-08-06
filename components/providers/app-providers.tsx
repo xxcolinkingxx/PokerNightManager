@@ -3,6 +3,7 @@
 import { MotionConfig } from "framer-motion";
 import { useEffect } from "react";
 
+import { useKeyboardFocusScroll } from "@/hooks/use-keyboard-focus-scroll";
 import { initializeDatabase } from "@/lib/db/database";
 import { useAppStore } from "@/stores/app-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -16,6 +17,8 @@ interface AppProvidersProps {
 export function AppProviders({ children }: AppProvidersProps) {
   const setDbReady = useAppStore((state) => state.setDbReady);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
+
+  useKeyboardFocusScroll();
 
   useEffect(() => {
     let cancelled = false;
