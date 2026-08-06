@@ -1,4 +1,4 @@
-import { Calendar, DollarSign, TrendingUp, Trophy } from "lucide-react";
+import { Calendar, DollarSign, TrendingDown, TrendingUp, Trophy } from "lucide-react";
 
 import { StatCard } from "@/components/shared/stat-card";
 import type { PlayerStats } from "@/lib/players/player-stats";
@@ -15,6 +15,8 @@ interface PlayerStatsGridProps {
 }
 
 export function PlayerStatsGrid({ stats }: PlayerStatsGridProps) {
+  const hasCompletedGames = stats.completedSessionsCount > 0;
+
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard label="Sessions Played" value={String(stats.sessionsPlayed)} icon={Calendar} />
@@ -25,8 +27,40 @@ export function PlayerStatsGrid({ stats }: PlayerStatsGridProps) {
       />
       <StatCard label="Total Buy-In" value={formatCurrency(stats.totalBuyIn)} icon={DollarSign} />
       <StatCard label="Avg Buy-In" value={formatCurrency(stats.averageBuyIn)} icon={DollarSign} />
-      <StatCard label="Lifetime P/L" value="—" icon={TrendingUp} trend="Tracks after cash-outs" />
-      <StatCard label="ROI" value="—" icon={TrendingUp} trend="Tracks after cash-outs" />
+      <StatCard
+        label="Lifetime P/L"
+        value={
+          hasCompletedGames
+            ? `${stats.profit > 0 ? "+" : ""}${formatCurrency(stats.profit)}`
+            : "—"
+        }
+        icon={TrendingUp}
+        trend={hasCompletedGames ? undefined : "No completed games yet"}
+      />
+      <StatCard
+        label="ROI"
+        value={stats.roi !== null ? `${stats.roi > 0 ? "+" : ""}${(stats.roi * 100).toFixed(0)}%` : "—"}
+        icon={TrendingUp}
+        trend={stats.roi === null ? "No completed games yet" : undefined}
+      />
+      <StatCard
+        label="Largest Win"
+        value={
+          stats.largestWin !== null && stats.largestWin > 0
+            ? formatCurrency(stats.largestWin)
+            : "—"
+        }
+        icon={TrendingUp}
+      />
+      <StatCard
+        label="Largest Loss"
+        value={
+          stats.largestLoss !== null && stats.largestLoss < 0
+            ? `-${formatCurrency(Math.abs(stats.largestLoss))}`
+            : "—"
+        }
+        icon={TrendingDown}
+      />
     </div>
   );
 }

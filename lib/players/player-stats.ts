@@ -1,4 +1,5 @@
-import type { Session, SessionEvent, SessionType } from "@/lib/session/types";
+import { getPlayerSummaries } from "@/lib/session/services/session-engine";
+import type { Session, SessionType, SessionWithEvents } from "@/lib/session/types";
 
 export interface PlayerSessionHistoryEntry {
   sessionId: string;
@@ -6,6 +7,11 @@ export interface PlayerSessionHistoryEntry {
   date: string;
   status: Session["status"];
   buyInTotal: number;
+  cashOutTotal: number;
+  // cashOutTotal - buyInTotal. Only meaningful once status is "completed" --
+  // for a session still in progress this just reflects money currently
+  // committed to the table, not a realized result.
+  profit: number;
 }
 
 export interface PlayerStats {
@@ -14,11 +20,13 @@ export interface PlayerStats {
   averageBuyIn: number;
   favoriteGameType: SessionType | null;
   history: PlayerSessionHistoryEntry[];
-}
-
-interface SessionWithEvents {
-  session: Session;
-  events: SessionEvent[];
+  // Everything below is derived from completed sessions only, so an
+  // in-progress game's unrealized numbers never leak into lifetime totals.
+  completedSessionsCount: number;
+  profit: number;
+  roi: number | null;
+  largestWin: number | null;
+  largestLoss: number | null;
 }
 
 export function computePlayerStats(
@@ -28,33 +36,37 @@ export function computePlayerStats(
   const history: PlayerSessionHistoryEntry[] = [];
   const gameTypeCounts = new Map<SessionType, number>();
   let totalBuyIn = 0;
+  let completedSessionsCount = 0;
+  let realizedBuyIn = 0;
+  let profit = 0;
+  let largestWin: number | null = null;
+  let largestLoss: number | null = null;
 
   for (const { session, events } of sessionsWithEvents) {
-    const playedInSession = events.some(
-      (event) => event.type === "player_joined" && event.payload.playerId === playerId,
-    );
-    if (!playedInSession) continue;
+    const summary = getPlayerSummaries(events).find((p) => p.playerId === playerId);
+    if (!summary) continue;
 
-    const buyInTotal = events.reduce((sum, event) => {
-      if (
-        (event.type === "buy_in" || event.type === "rebuy") &&
-        event.payload.playerId === playerId
-      ) {
-        return sum + event.payload.amount;
-      }
-      return sum;
-    }, 0);
-
-    totalBuyIn += buyInTotal;
+    totalBuyIn += summary.buyInTotal;
     gameTypeCounts.set(session.type, (gameTypeCounts.get(session.type) ?? 0) + 1);
 
+    const sessionProfit = summary.cashOutTotal - summary.buyInTotal;
     history.push({
       sessionId: session.id,
       sessionName: session.name,
       date: session.createdAt,
       status: session.status,
-      buyInTotal,
+      buyInTotal: summary.buyInTotal,
+      cashOutTotal: summary.cashOutTotal,
+      profit: sessionProfit,
     });
+
+    if (session.status === "completed") {
+      completedSessionsCount += 1;
+      realizedBuyIn += summary.buyInTotal;
+      profit += sessionProfit;
+      if (largestWin === null || sessionProfit > largestWin) largestWin = sessionProfit;
+      if (largestLoss === null || sessionProfit < largestLoss) largestLoss = sessionProfit;
+    }
   }
 
   history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -74,5 +86,10 @@ export function computePlayerStats(
     averageBuyIn: history.length > 0 ? totalBuyIn / history.length : 0,
     favoriteGameType,
     history,
+    completedSessionsCount,
+    profit,
+    roi: realizedBuyIn > 0 ? profit / realizedBuyIn : null,
+    largestWin,
+    largestLoss,
   };
 }

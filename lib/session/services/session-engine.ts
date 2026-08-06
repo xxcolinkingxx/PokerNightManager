@@ -138,7 +138,12 @@ export function formatCurrency(amount: number): string {
 export interface PlayerSessionSummary {
   playerId: string;
   playerName: string;
+  // Net money still "on the table" -- (buyInTotal + rebuys) - cashOutTotal.
+  // Doubles as a live stack proxy; goes negative once someone cashes out
+  // for more than they put in.
   total: number;
+  buyInTotal: number;
+  cashOutTotal: number;
   seat: number;
   isCashedOut: boolean;
 }
@@ -146,7 +151,8 @@ export interface PlayerSessionSummary {
 export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary[] {
   const order: string[] = [];
   const names = new Map<string, string>();
-  const totals = new Map<string, number>();
+  const buyInTotals = new Map<string, number>();
+  const cashOutTotals = new Map<string, number>();
   const cashedOut = new Set<string>();
 
   for (const event of events) {
@@ -154,26 +160,50 @@ export function getPlayerSummaries(events: SessionEvent[]): PlayerSessionSummary
       const { playerId, playerName } = event.payload;
       if (!names.has(playerId)) order.push(playerId);
       names.set(playerId, playerName);
-      if (!totals.has(playerId)) totals.set(playerId, 0);
+      if (!buyInTotals.has(playerId)) buyInTotals.set(playerId, 0);
     } else if (event.type === "buy_in" || event.type === "rebuy") {
       const { playerId, amount } = event.payload;
-      totals.set(playerId, (totals.get(playerId) ?? 0) + amount);
+      buyInTotals.set(playerId, (buyInTotals.get(playerId) ?? 0) + amount);
     } else if (event.type === "cash_out") {
       const { playerId, amount } = event.payload;
-      totals.set(playerId, (totals.get(playerId) ?? 0) - amount);
+      cashOutTotals.set(playerId, (cashOutTotals.get(playerId) ?? 0) + amount);
       cashedOut.add(playerId);
     }
   }
 
-  return order.map((playerId, index) => ({
-    playerId,
-    playerName: names.get(playerId) ?? "Unknown",
-    total: totals.get(playerId) ?? 0,
-    // Seats are a pure display computation (join order), not stored state --
-    // deliberately, so this can be removed later without a data migration.
-    seat: index + 1,
-    isCashedOut: cashedOut.has(playerId),
-  }));
+  return order.map((playerId, index) => {
+    const buyInTotal = buyInTotals.get(playerId) ?? 0;
+    const cashOutTotal = cashOutTotals.get(playerId) ?? 0;
+    return {
+      playerId,
+      playerName: names.get(playerId) ?? "Unknown",
+      total: buyInTotal - cashOutTotal,
+      buyInTotal,
+      cashOutTotal,
+      // Seats are a pure display computation (join order), not stored
+      // state -- deliberately, so this can be removed later without a
+      // data migration.
+      seat: index + 1,
+      isCashedOut: cashedOut.has(playerId),
+    };
+  });
+}
+
+export function computePeakPot(events: SessionEvent[]): number {
+  let pot = 0;
+  let peak = 0;
+
+  for (const event of events) {
+    if (event.type === "pot_updated") {
+      const { action, amount } = event.payload;
+      if (action === "set") pot = amount;
+      else if (action === "add") pot += amount;
+      else if (action === "clear") pot = 0;
+      peak = Math.max(peak, pot);
+    }
+  }
+
+  return peak;
 }
 
 export function getCurrentDealer(events: SessionEvent[]): string | null {

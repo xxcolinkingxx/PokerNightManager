@@ -138,6 +138,11 @@ export interface SessionState {
   currentBlindLevel: number;
 }
 
+export interface SessionWithEvents {
+  session: Session;
+  events: SessionEvent[];
+}
+
 export interface WizardFormData {
   name: string;
   host: string;
