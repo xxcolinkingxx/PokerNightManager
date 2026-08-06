@@ -278,7 +278,7 @@ export default function SettingsPage() {
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
-                <span>Poker Night Manager v0.1.0</span>
+                <span>Poker Night Manager v1.0.0</span>
               </div>
               <Separator />
               <p className="text-xs text-muted-foreground">
