@@ -51,6 +51,38 @@ type BackupStatus =
   | { state: "restoring" }
   | { state: "error"; message: string };
 
+const EASTER_EGG_URL = "https://www.tiktok.com/@panzersoldat?_r=1&_t=ZT-98fCpHkFEaL";
+const EASTER_EGG_TAP_WINDOW_MS = 800;
+const EASTER_EGG_TAPS_REQUIRED = 3;
+
+function Element115Badge() {
+  const tapCountRef = useRef(0);
+  const lastTapRef = useRef(0);
+
+  function handleTap() {
+    const now = Date.now();
+    const withinWindow = now - lastTapRef.current < EASTER_EGG_TAP_WINDOW_MS;
+    lastTapRef.current = now;
+    tapCountRef.current = withinWindow ? tapCountRef.current + 1 : 1;
+
+    if (tapCountRef.current >= EASTER_EGG_TAPS_REQUIRED) {
+      tapCountRef.current = 0;
+      window.open(EASTER_EGG_URL, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleTap}
+      aria-label="115"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold text-muted-foreground transition-transform active:scale-90"
+    >
+      115
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, isLoading, updateSettings } = useSettingsStore();
 
@@ -135,6 +167,7 @@ export default function SettingsPage() {
         <PageHeader
           title="Settings"
           subtitle="Configure your poker nights"
+          action={<Element115Badge />}
         />
 
         <Link href="/settings/chips">
@@ -278,18 +311,7 @@ export default function SettingsPage() {
             <CardContent className="flex flex-col gap-3 p-5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
-                <span>
-                  Poker Night Manager v1.0.0
-                  <a
-                    href="https://www.tiktok.com/@panzersoldat?_r=1&_t=ZT-98fCpHkFEaL"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="115"
-                    className="ml-0.5 align-super text-[9px] text-muted-foreground/40 no-underline"
-                  >
-                    115
-                  </a>
-                </span>
+                <span>Poker Night Manager v1.0.0</span>
               </div>
               <Separator />
               <p className="text-xs text-muted-foreground">
