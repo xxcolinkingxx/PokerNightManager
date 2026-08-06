@@ -188,11 +188,17 @@ export function formatElapsedTime(ms: number): string {
 }
 
 export function formatCurrency(amount: number): string {
+  // Whole-dollar amounts (the common case -- buy-ins, pots, etc.) stay
+  // clean with no ".00". But settlement math in particular can land on
+  // real cents (splitting an unequal pot), and those shouldn't get
+  // silently rounded away to the nearest dollar -- someone owing $0.33
+  // is not the same as owing nothing.
+  const hasCents = Math.round(amount * 100) % 100 !== 0;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
