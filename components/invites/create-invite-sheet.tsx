@@ -136,7 +136,13 @@ export function CreateInviteSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom">
+      {/* Bounded height + an inner scroll container, same as the New
+          Session wizard's sheet -- without this, a fixed-position sheet
+          taller than the keyboard-shrunk viewport has no well-defined
+          place for overflow to go, and scrollIntoView on a field inside
+          it can't actually reposition a position:fixed ancestor, which
+          on iOS showed up as fields jumping up under the status bar. */}
+      <SheetContent side="bottom" className="flex max-h-[88dvh] flex-col overflow-hidden">
         {invite ? (
           <>
             <SheetHeader>
@@ -145,21 +151,23 @@ export function CreateInviteSheet({
                 Share this link -- guests can RSVP without an account or the app.
               </SheetDescription>
             </SheetHeader>
-            <div className="flex flex-col gap-3 px-6">
-              <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground break-all">
-                {inviteUrl}
+            <div className="flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-3 px-6">
+                <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground break-all">
+                  {inviteUrl}
+                </div>
               </div>
+              <SheetFooter>
+                <Button variant="secondary" onClick={() => void handleCopy()}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copied" : "Copy Link"}
+                </Button>
+                <Button onClick={() => void handleShare()}>
+                  <Send className="h-4 w-4" />
+                  Share
+                </Button>
+              </SheetFooter>
             </div>
-            <SheetFooter>
-              <Button variant="secondary" onClick={() => void handleCopy()}>
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copied" : "Copy Link"}
-              </Button>
-              <Button onClick={() => void handleShare()}>
-                <Send className="h-4 w-4" />
-                Share
-              </Button>
-            </SheetFooter>
           </>
         ) : (
           <>
@@ -169,58 +177,64 @@ export function CreateInviteSheet({
                 Create a shareable link. Guests can RSVP with no login or install.
               </SheetDescription>
             </SheetHeader>
-            <form onSubmit={onSubmit} className="flex flex-col gap-4 px-6">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="invite-game-name">Game Name</Label>
-                <Input
-                  id="invite-game-name"
-                  placeholder="Friday Night Poker"
-                  {...form.register("gameName")}
-                />
-                {form.formState.errors.gameName && (
-                  <p className="text-xs text-danger">{form.formState.errors.gameName.message}</p>
-                )}
-              </div>
+            <div className="flex-1 overflow-y-auto px-6">
+              <form onSubmit={onSubmit} className="flex flex-col gap-4 pb-6">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="invite-game-name">Game Name</Label>
+                  <Input
+                    id="invite-game-name"
+                    placeholder="Friday Night Poker"
+                    {...form.register("gameName")}
+                  />
+                  {form.formState.errors.gameName && (
+                    <p className="text-xs text-danger">{form.formState.errors.gameName.message}</p>
+                  )}
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="invite-host-name">Host Name</Label>
-                <Input id="invite-host-name" {...form.register("hostName")} />
-                {form.formState.errors.hostName && (
-                  <p className="text-xs text-danger">{form.formState.errors.hostName.message}</p>
-                )}
-              </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="invite-host-name">Host Name</Label>
+                  <Input id="invite-host-name" {...form.register("hostName")} />
+                  {form.formState.errors.hostName && (
+                    <p className="text-xs text-danger">{form.formState.errors.hostName.message}</p>
+                  )}
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="invite-date">Date</Label>
-                <Input id="invite-date" type="date" {...form.register("date")} />
-                {form.formState.errors.date && (
-                  <p className="text-xs text-danger">{form.formState.errors.date.message}</p>
-                )}
-              </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="invite-date">Date</Label>
+                  <Input id="invite-date" type="date" {...form.register("date")} />
+                  {form.formState.errors.date && (
+                    <p className="text-xs text-danger">{form.formState.errors.date.message}</p>
+                  )}
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="invite-location">Location</Label>
-                <Input id="invite-location" placeholder="Colin's place" {...form.register("location")} />
-              </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="invite-location">Location</Label>
+                  <Input
+                    id="invite-location"
+                    placeholder="Colin's place"
+                    {...form.register("location")}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="invite-buy-in">Buy-In (optional)</Label>
-                <Input
-                  id="invite-buy-in"
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="TBD"
-                  {...form.register("buyIn")}
-                />
-              </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="invite-buy-in">Buy-In (optional)</Label>
+                  <Input
+                    id="invite-buy-in"
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="TBD"
+                    {...form.register("buyIn")}
+                  />
+                </div>
 
-              {submitError && <p className="text-sm text-danger">{submitError}</p>}
+                {submitError && <p className="text-sm text-danger">{submitError}</p>}
 
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Invite Link"}
-              </Button>
-            </form>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Creating..." : "Create Invite Link"}
+                </Button>
+              </form>
+            </div>
           </>
         )}
       </SheetContent>
