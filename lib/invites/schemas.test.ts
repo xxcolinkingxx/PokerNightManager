@@ -32,6 +32,21 @@ describe("createInviteSchema", () => {
   it("rejects a missing game name", () => {
     expect(() => createInviteSchema.parse({ ...base, gameName: "" })).toThrow();
   });
+
+  it("defaults expiresInDays to 90 when omitted", () => {
+    const result = createInviteSchema.parse(base);
+    expect(result.expiresInDays).toBe(90);
+  });
+
+  it("accepts any of the documented expiry options", () => {
+    for (const days of [1, 3, 7, 14, 30, 90]) {
+      expect(createInviteSchema.parse({ ...base, expiresInDays: days }).expiresInDays).toBe(days);
+    }
+  });
+
+  it("rejects an expiry that isn't one of the offered options", () => {
+    expect(() => createInviteSchema.parse({ ...base, expiresInDays: 45 })).toThrow();
+  });
 });
 
 describe("rsvpSchema", () => {

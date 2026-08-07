@@ -9,6 +9,7 @@ import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { addHostInvite } from "@/lib/invites/host-invite-log";
-import { createInviteSchema } from "@/lib/invites/schemas";
+import { createInviteSchema, DEFAULT_INVITE_EXPIRY_DAYS, INVITE_EXPIRY_OPTIONS } from "@/lib/invites/schemas";
 import type { GameInvite } from "@/lib/invites/types";
 
 type FormInput = z.input<typeof createInviteSchema>;
@@ -47,6 +48,7 @@ export function CreateInviteSheet({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [expiresInDays, setExpiresInDays] = useState<number>(DEFAULT_INVITE_EXPIRY_DAYS);
 
   // Same three-generic shape as the blind structure form: the input type
   // drives register()'d fields, the output type is what the resolver
@@ -73,6 +75,7 @@ export function CreateInviteSheet({
       setInvite(null);
       setSubmitError(null);
       setCopied(false);
+      setExpiresInDays(DEFAULT_INVITE_EXPIRY_DAYS);
       form.reset({
         gameName: "",
         hostName: defaultHostName,
@@ -90,7 +93,7 @@ export function CreateInviteSheet({
       const response = await fetch("/api/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, expiresInDays }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -226,6 +229,25 @@ export function CreateInviteSheet({
                     placeholder="TBD"
                     {...form.register("buyIn")}
                   />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="invite-expires">Link expires in</Label>
+                  <Select
+                    value={String(expiresInDays)}
+                    onValueChange={(value) => setExpiresInDays(Number(value))}
+                  >
+                    <SelectTrigger id="invite-expires">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INVITE_EXPIRY_OPTIONS.map((option) => (
+                        <SelectItem key={option.days} value={String(option.days)}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {submitError && <p className="text-sm text-danger">{submitError}</p>}

@@ -8,7 +8,14 @@ describe("buildInvite", () => {
   it("creates an invite with no RSVPs yet", () => {
     const invite = buildInvite(
       "abc123",
-      { gameName: "Friday Night", hostName: "Colin", date: "2026-01-10", location: "Home", buyIn: 50 },
+      {
+        gameName: "Friday Night",
+        hostName: "Colin",
+        date: "2026-01-10",
+        location: "Home",
+        buyIn: 50,
+        expiresInDays: 90,
+      },
       NOW,
     );
     expect(invite).toEqual({
@@ -19,14 +26,38 @@ describe("buildInvite", () => {
       location: "Home",
       buyIn: 50,
       createdAt: NOW,
+      expiresAt: "2026-04-01T00:00:00.000Z",
       rsvps: [],
     });
+  });
+
+  it("computes expiresAt from the chosen expiry window, not a fixed default", () => {
+    const invite = buildInvite(
+      "abc123",
+      {
+        gameName: "Friday Night",
+        hostName: "Colin",
+        date: "2026-01-10",
+        location: "Home",
+        buyIn: 50,
+        expiresInDays: 7,
+      },
+      NOW,
+    );
+    expect(invite.expiresAt).toBe("2026-01-08T00:00:00.000Z");
   });
 
   it("allows a null buy-in for TBD", () => {
     const invite = buildInvite(
       "abc123",
-      { gameName: "Friday Night", hostName: "Colin", date: "2026-01-10", location: "Home", buyIn: null },
+      {
+        gameName: "Friday Night",
+        hostName: "Colin",
+        date: "2026-01-10",
+        location: "Home",
+        buyIn: null,
+        expiresInDays: 90,
+      },
       NOW,
     );
     expect(invite.buyIn).toBeNull();
@@ -36,7 +67,14 @@ describe("buildInvite", () => {
 describe("applyRsvp", () => {
   const base = buildInvite(
     "abc123",
-    { gameName: "Friday Night", hostName: "Colin", date: "2026-01-10", location: "Home", buyIn: 50 },
+    {
+      gameName: "Friday Night",
+      hostName: "Colin",
+      date: "2026-01-10",
+      location: "Home",
+      buyIn: 50,
+      expiresInDays: 90,
+    },
     NOW,
   );
 
@@ -97,7 +135,14 @@ describe("summarizeRsvps", () => {
   it("counts each status independently", () => {
     let invite = buildInvite(
       "abc123",
-      { gameName: "Friday Night", hostName: "Colin", date: "2026-01-10", location: "Home", buyIn: 50 },
+      {
+        gameName: "Friday Night",
+        hostName: "Colin",
+        date: "2026-01-10",
+        location: "Home",
+        buyIn: 50,
+        expiresInDays: 90,
+      },
       NOW,
     );
     invite = applyRsvp(invite, { guestToken: "t1", name: "Alice", status: "in", eta: null }, NOW);
@@ -111,7 +156,14 @@ describe("summarizeRsvps", () => {
   it("returns all zeros for no RSVPs yet", () => {
     const invite = buildInvite(
       "abc123",
-      { gameName: "Friday Night", hostName: "Colin", date: "2026-01-10", location: "Home", buyIn: 50 },
+      {
+        gameName: "Friday Night",
+        hostName: "Colin",
+        date: "2026-01-10",
+        location: "Home",
+        buyIn: 50,
+        expiresInDays: 90,
+      },
       NOW,
     );
     expect(summarizeRsvps(invite)).toEqual({ inCount: 0, maybeCount: 0, outCount: 0 });

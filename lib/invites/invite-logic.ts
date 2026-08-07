@@ -1,14 +1,18 @@
 import type { GameInvite, InviteRsvp, RsvpStatus } from "./types";
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export interface CreateInviteInput {
   gameName: string;
   hostName: string;
   date: string;
   location: string;
   buyIn: number | null;
+  expiresInDays: number;
 }
 
 export function buildInvite(id: string, input: CreateInviteInput, now: string): GameInvite {
+  const expiresAt = new Date(new Date(now).getTime() + input.expiresInDays * MS_PER_DAY).toISOString();
   return {
     id,
     gameName: input.gameName,
@@ -17,6 +21,7 @@ export function buildInvite(id: string, input: CreateInviteInput, now: string): 
     location: input.location,
     buyIn: input.buyIn,
     createdAt: now,
+    expiresAt,
     rsvps: [],
   };
 }
