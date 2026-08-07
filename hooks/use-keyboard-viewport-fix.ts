@@ -7,7 +7,11 @@ const FOCUSABLE_TAGS = new Set(["INPUT", "TEXTAREA"]);
 function scrollActiveFieldIntoView() {
   const active = document.activeElement;
   if (active instanceof HTMLElement && FOCUSABLE_TAGS.has(active.tagName)) {
-    active.scrollIntoView({ block: "center", behavior: "smooth" });
+    // "nearest" scrolls the minimum distance needed to clear the keyboard.
+    // "center" was claiming half of the reserved --keyboard-inset padding
+    // as buffer space even when the field only needed to move a little,
+    // leaving a large empty gap between the field and the keyboard.
+    active.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 }
 
