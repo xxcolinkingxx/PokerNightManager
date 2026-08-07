@@ -34,6 +34,12 @@ function formatDateLabel(date: string): string {
   });
 }
 
+function formatExpiryLabel(expiresAt: string): string {
+  const parsed = new Date(expiresAt);
+  if (Number.isNaN(parsed.getTime())) return "Unknown";
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function HostInviteDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -203,6 +209,12 @@ export default function HostInviteDetailPage() {
                   <span className="text-muted-foreground">Buy-In</span>
                   <span className="font-medium text-foreground">
                     {invite.buyIn === null ? "TBD" : formatCurrency(invite.buyIn)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Link expires</span>
+                  <span className="font-medium text-foreground">
+                    {formatExpiryLabel(invite.expiresAt)}
                   </span>
                 </div>
               </CardContent>
